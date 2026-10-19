@@ -1,0 +1,131 @@
+import { Caveat_700Bold } from "@expo-google-fonts/caveat";
+import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
+import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold } from "@expo-google-fonts/onest";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
+import { Stack, router, usePathname, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef } from "react";
+import { AppState, Platform, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ToastProvider } from "@/components/Toast";
+import { I18nProvider, useI18n } from "@/i18n";
+import { ping, track } from "@/lib/analytics";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { useMembers, useProfile } from "@/lib/data";
+import { registerPush } from "@/lib/push";
+import { queryClient } from "@/lib/query";
+import { SelectedMemberProvider } from "@/lib/selected";
+import { colors } from "@/lib/theme";
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const PUBLIC = new Set(["welcome", "sign-in", "sign-up", "forgot", "legal"]);
+
+function Gate() {
+  const { session, loading } = useAuth();
+  const { ready: i18nReady, locale } = useI18n();
+  const profile = useProfile();
+  const members = useMembers();
+  const segments = useSegments();
+  const pathname = usePathname();
+  const first = segments[0] as string | undefined;
+
+  const dataReady = !session || (profile.isFetched && members.isFetched);
+  const ready = !loading && i18nReady && dataReady;
+  const needsOnboarding = !!session && dataReady && (!profile.data?.onboarded || !members.data?.some((m) => m.is_self));
+
+  useEffect(() => {
+    if (!ready) return;
+    SplashScreen.hideAsync().catch(() => {});
+    if (!session) {
+      if (!first || !PUBLIC.has(first)) router.replace("/welcome");
+    } else if (needsOnboarding) {
+      if (first !== "onboarding" && first !== "member") router.replace("/onboarding");
+    } else if (!first || (PUBLIC.has(first) && first !== "legal") || first === "onboarding") {
+      router.replace("/");
+    }
+  }, [ready, session, needsOnboarding, first]);
+
+  // Analytics: app opens and screen views.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!session) {
+      opened.current = false;
+      return;
+    }
+    if (!opened.current) {
+      opened.current = true;
+      ping(locale);
+      if (profile.data?.notifications_enabled !== false) registerPush(false);
+    }
+    const sub = AppState.addEventListener("change", (s) => s === "active" && ping(locale));
+    return () => sub.remove();
+  }, [session, locale, profile.data?.notifications_enabled]);
+
+  useEffect(() => {
+    if (session && pathname) track("screen_view", { path: pathname });
+  }, [pathname, session]);
+
+  // Opening a push notification navigates to the screen it points at.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { route?: string; broadcastId?: string } | undefined;
+      track("push_opened", { broadcast_id: data?.broadcastId ?? null });
+      const route = typeof data?.route === "string" && data.route.startsWith("/") ? data.route : "/inbox";
+      router.push(route as never);
+    });
+    return () => sub.remove();
+  }, []);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper }, animation: "default" }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="welcome" options={{ animation: "fade" }} />
+        <Stack.Screen name="onboarding" options={{ animation: "fade", gestureEnabled: false }} />
+        <Stack.Screen name="upload" options={{ presentation: "modal" }} />
+        <Stack.Screen name="member/edit" options={{ presentation: "modal" }} />
+        <Stack.Screen name="legal" options={{ presentation: "modal" }} />
+      </Stack>
+      {!ready ? <View style={{ position: "absolute", inset: 0, backgroundColor: colors.paper }} /> : null}
+    </View>
+  );
+}
+
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Onest_400Regular,
+    Onest_500Medium,
+    Onest_600SemiBold,
+    Onest_700Bold,
+    Caveat_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+  });
+
+  if (!fontsLoaded && !fontError) return null;
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <I18nProvider>
+            <AuthProvider>
+              <SelectedMemberProvider>
+                <ToastProvider>
+                  <StatusBar style="dark" />
+                  <Gate />
+                </ToastProvider>
+              </SelectedMemberProvider>
+            </AuthProvider>
+          </I18nProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}

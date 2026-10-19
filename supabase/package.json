@@ -1,0 +1,11 @@
+{
+  "name": "labless-db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node apply.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

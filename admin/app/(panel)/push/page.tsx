@@ -38,8 +38,8 @@ export default async function Push() {
             приходит пушем на телефон.
           </p>
           <p className="muted">
-            Пуши доставляет сервис Expo. В Expo Go на Android пуши не работают по ограничению Expo, на iOS работают после привязки проекта
-            к EAS. В собранном приложении работают везде.
+            «Доставлено» считается по подтверждению Apple, а не по тому, что Expo принял сообщение. Если пуши не доходят, в колонке
+            «Причина» будет ответ Apple. Нажатие на уведомление открывает выбранный раздел или ссылку.
           </p>
         </section>
       </div>
@@ -55,6 +55,7 @@ export default async function Push() {
                 <th className="num">Получателей</th>
                 <th className="num">Пушей доставлено</th>
                 <th className="num">Ошибок</th>
+                <th>Причина</th>
               </tr>
             </thead>
             <tbody>
@@ -69,6 +70,7 @@ export default async function Push() {
                   <td className="num">{fmtNum(b.recipients)}</td>
                   <td className="num">{fmtNum(b.push_sent)}</td>
                   <td className="num">{fmtNum(b.push_failed)}</td>
+                  <td className="muted" style={{ maxWidth: 260 }}>{b.push_error ?? ""}</td>
                 </tr>
               ))}
             </tbody>

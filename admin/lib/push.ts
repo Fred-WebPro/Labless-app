@@ -9,6 +9,82 @@ export type Audience =
   | { type: "users"; ids: string[] };
 
 const EXPO_PUSH = "https://exp.host/--/api/v2/push/send";
+const EXPO_RECEIPTS = "https://exp.host/--/api/v2/push/getReceipts";
+
+type Ticket = { status: string; id?: string; message?: string; details?: { error?: string } };
+
+type PushMessage = { to: string; title: string; body: string; sound: "default"; data: Record<string, unknown> };
+
+/**
+ * Sends messages through Expo and then asks Apple/Google (via Expo receipts) whether they were
+ * really delivered. A ticket only means Expo accepted the message.
+ */
+async function deliver(messages: PushMessage[]) {
+  let sent = 0;
+  let failed = 0;
+  let firstError: string | null = null;
+  const dead: string[] = [];
+  const ticketIds: string[] = [];
+  const noteError = (msg: string | undefined, code: string | undefined) => {
+    failed++;
+    firstError ??= msg ?? code ?? "unknown error";
+  };
+
+  for (let i = 0; i < messages.length; i += 100) {
+    const batch = messages.slice(i, i + 100);
+    try {
+      const res = await fetch(EXPO_PUSH, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify(batch),
+      });
+      const payload = (await res.json()) as { data?: Ticket[] };
+      (payload.data ?? []).forEach((ticket, idx) => {
+        if (ticket.status === "ok" && ticket.id) ticketIds.push(ticket.id);
+        else {
+          noteError(ticket.message, ticket.details?.error);
+          if (ticket.details?.error === "DeviceNotRegistered") dead.push(batch[idx].to);
+        }
+      });
+    } catch (err) {
+      failed += batch.length;
+      firstError ??= err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  if (ticketIds.length) {
+    // Receipts are usually ready within a few seconds.
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const res = await fetch(EXPO_RECEIPTS, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ ids: ticketIds }),
+      });
+      const payload = (await res.json()) as { data?: Record<string, Ticket> };
+      for (const id of ticketIds) {
+        const receipt = payload.data?.[id];
+        if (!receipt || receipt.status === "ok") sent++;
+        else noteError(receipt.message, receipt.details?.error);
+      }
+    } catch {
+      sent += ticketIds.length;
+    }
+  }
+
+  if (dead.length) await adminDb().from("push_tokens").update({ disabled: true }).in("token", dead);
+  return { sent, failed, error: firstError };
+}
+
+/** Push to every device of one user (no inbox entry). Used for "your reading is ready". */
+export async function pushToUser(userId: string, title: string, body: string, data: Record<string, unknown> = {}) {
+  const db = adminDb();
+  const { data: profile } = await db.from("profiles").select("notifications_enabled").eq("id", userId).maybeSingle();
+  if (profile && profile.notifications_enabled === false) return { sent: 0, failed: 0, error: null };
+  const { data: tokens } = await db.from("push_tokens").select("token").eq("user_id", userId).eq("disabled", false);
+  if (!tokens?.length) return { sent: 0, failed: 0, error: null };
+  return deliver(tokens.map((t) => ({ to: t.token as string, title, body, sound: "default" as const, data })));
+}
 
 /** Resolve the user ids an audience targets. */
 export async function resolveAudience(audience: Audience): Promise<string[]> {
@@ -74,8 +150,6 @@ export async function sendBroadcast(input: {
     await db.from("inbox").insert(chunk);
   }
 
-  let sent = 0;
-  let failed = 0;
   const tokens: { token: string; user_id: string }[] = [];
   for (let i = 0; i < userIds.length; i += 300) {
     const { data } = await db
@@ -86,41 +160,20 @@ export async function sendBroadcast(input: {
     tokens.push(...(data ?? []));
   }
 
-  for (let i = 0; i < tokens.length; i += 100) {
-    const batch = tokens.slice(i, i + 100);
-    try {
-      const res = await fetch(EXPO_PUSH, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(
-          batch.map((t) => ({
-            to: t.token,
-            title: input.title,
-            body: input.body,
-            sound: "default",
-            data: { ...(input.data ?? {}), broadcastId: broadcast.id },
-          })),
-        ),
-      });
-      const payload = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
-      (payload.data ?? []).forEach((ticket, idx) => {
-        if (ticket.status === "ok") sent++;
-        else {
-          failed++;
-          if (ticket.details?.error === "DeviceNotRegistered") {
-            void db.from("push_tokens").update({ disabled: true }).eq("token", batch[idx].token);
-          }
-        }
-      });
-    } catch {
-      failed += batch.length;
-    }
-  }
+  const { sent, failed, error: pushError } = await deliver(
+    tokens.map((t) => ({
+      to: t.token,
+      title: input.title,
+      body: input.body,
+      sound: "default" as const,
+      data: { ...(input.data ?? {}), broadcastId: broadcast.id },
+    })),
+  );
 
   await db
     .from("broadcasts")
-    .update({ status: "sent", push_sent: sent, push_failed: failed, sent_at: new Date().toISOString() })
+    .update({ status: "sent", push_sent: sent, push_failed: failed, push_error: pushError, sent_at: new Date().toISOString() })
     .eq("id", broadcast.id);
 
-  return { id: broadcast.id as string, recipients: userIds.length, devices: tokens.length, sent, failed };
+  return { id: broadcast.id as string, recipients: userIds.length, devices: tokens.length, sent, failed, error: pushError };
 }

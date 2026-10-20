@@ -2,6 +2,15 @@ import { adminDb } from "@/lib/supabase";
 import { AnalysisError, MODEL, extractReport, interpret, type UsageSink } from "@/lib/analysis/claude";
 import { ageFrom, computeIndices } from "@/lib/analysis/indices";
 import { markerByKey } from "@/lib/analysis/markers";
+import { refreshAfterAnalysis } from "@/lib/analysis/insights";
+import { sleepSummary } from "@/lib/analysis/sleep";
+import { pushToUser } from "@/lib/push";
+
+const READY_PUSH: Record<string, { title: string; body: (name: string) => string }> = {
+  en: { title: "Your reading is ready", body: (n) => `${n}: open it to see the findings and hidden tests.` },
+  es: { title: "Tu lectura está lista", body: (n) => `${n}: ábrela para ver los hallazgos y las pruebas ocultas.` },
+  ru: { title: "Разбор готов", body: (n) => `${n}: откройте, чтобы увидеть находки и скрытые анализы.` },
+};
 
 type ReportFile = { path: string; type: string };
 
@@ -34,7 +43,7 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
   const { data: report } = await db.from("reports").select("*").eq("id", reportId).single();
   if (!report) throw new Error("report not found");
   const { data: member } = await db.from("members").select("*").eq("id", report.member_id).single();
-  const { data: profile } = await db.from("profiles").select("locale").eq("id", report.owner_id).maybeSingle();
+  const { data: profile } = await db.from("profiles").select("locale, timezone").eq("id", report.owner_id).maybeSingle();
   const locale = profile?.locale ?? "en";
   const logUsage: UsageSink = async (kind, usage) => {
     const { error } = await db.from("ai_usage").insert({ user_id: report.owner_id, report_id: reportId, kind, ...usage });
@@ -141,6 +150,7 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
         .filter((h) => !collectedAt || !h.collected_at || h.collected_at <= collectedAt)
         .map((h) => ({ marker: h.marker, date: h.collected_at, value: Number(h.value) })),
       answers,
+      sleep: member?.is_self ? await sleepSummary(report.owner_id, profile?.timezone ?? undefined) : null,
     }, logUsage);
 
     // Keep questions that were already answered so their answers stay readable.
@@ -180,6 +190,14 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
       props: { report_id: reportId, ms: Date.now() - started, results: results?.length ?? 0, status: result.status },
       platform: "server",
     });
+
+    if (!opts.reinterpretOnly) {
+      const text = READY_PUSH[locale] ?? READY_PUSH.en;
+      await pushToUser(report.owner_id, text.title, text.body(member?.name ?? ""), { route: `/report/${reportId}` }).catch((e) =>
+        console.error("ready push failed", e),
+      );
+    }
+    await refreshAfterAnalysis(report.owner_id, report.member_id);
   } catch (err) {
     const code = err instanceof AnalysisError ? err.code : "api";
     const message = err instanceof Error ? err.message : String(err);

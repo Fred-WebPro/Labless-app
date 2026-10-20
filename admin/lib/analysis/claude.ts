@@ -40,7 +40,7 @@ export type Usage = {
   duration_ms: number;
 };
 
-export type UsageSink = (kind: "extraction" | "interpretation", usage: Usage) => Promise<void> | void;
+export type UsageSink = (kind: "extraction" | "interpretation" | "insights", usage: Usage) => Promise<void> | void;
 
 function usageOf(response: Anthropic.Beta.BetaMessage, speed: "fast" | "standard", started: number): Usage {
   const u = response.usage as Anthropic.Beta.BetaUsage & { speed?: string | null };
@@ -69,7 +69,7 @@ function usageOf(response: Anthropic.Beta.BetaMessage, speed: "fast" | "standard
  * Standard-speed request with server-side refusal fallback. Fast mode is not used:
  * it doubles the price for roughly twice the output speed.
  */
-async function create(params: Omit<CreateParams, "betas" | "fallbacks">): Promise<{ response: Anthropic.Beta.BetaMessage; usage: Usage }> {
+export async function create(params: Omit<CreateParams, "betas" | "fallbacks">): Promise<{ response: Anthropic.Beta.BetaMessage; usage: Usage }> {
   const started = Date.now();
   const response = await anthropic().beta.messages.create({
     ...params,
@@ -330,7 +330,7 @@ const INTERPRETATION_SCHEMA = {
   },
 } as const;
 
-const LANG: Record<string, string> = { en: "English", es: "Spanish", ru: "Russian" };
+export const LANG: Record<string, string> = { en: "English", es: "Spanish", ru: "Russian" };
 
 const INTERPRETATION_SYSTEM = `You are the reasoning engine of Labless, a wellness app that reads routine blood work far more thoroughly than a quick appointment allows. You explain results to a layperson and prepare them for a conversation with their doctor. You never diagnose or prescribe; you estimate, explain your confidence, and point to the single most useful next step.
 
@@ -348,7 +348,8 @@ How to reason:
 9. Status: "good" when nothing needs action, "watch" for minor things to keep an eye on, "attention" when a finding deserves a doctor visit or a test soon, "urgent" only for red flags.
 10. Findings: 3–6 items, most important first, each with the markers it relies on. Include reassuring findings ("good") when meaningful, so the person knows what is fine.
 11. Advice: 3–5 practical, specific health tips tied to these results (nutrition, activity, sleep, stress, habits, or supplements to discuss with a doctor). Each says what to do and why, for example "Walk 10–15 minutes after dinner: it lowers the after-meal glucose rise that drives insulin resistance". No generic wellness filler.
-12. Changes: when earlier results exist, up to 5 of the most meaningful changes since the previous report (marker name, better/worse/stable, one short sentence with both values). Empty when there are no earlier results.
+12. Sleep: when sleep data from the person's watch is given, connect it to the findings where it really explains something (short or irregular sleep raises insulin resistance, CRP, blood pressure and appetite hormones; very short sleep with high-normal hemoglobin and snoring hints at apnea). Mention the sleep numbers. Ignore sleep when it adds nothing.
+13. Changes: when earlier results exist, up to 5 of the most meaningful changes since the previous report (marker name, better/worse/stable, one short sentence with both values). Empty when there are no earlier results.
 
 Length: keep it tight. Summary 2–3 sentences. Each detail, explanation and reason 1–2 sentences. At most 8 hidden tests, 5 next steps, 5 doctor questions, 5 check-in questions. Skip anything that adds no new information.
 
@@ -362,6 +363,17 @@ type InterpretInput = {
   indices: IndexResult[];
   history: { marker: string; date: string | null; value: number }[];
   answers: { question: string; answer: string }[];
+  sleep?: SleepSummary | null;
+};
+
+export type SleepSummary = {
+  nights: number;
+  avg_asleep_h: number;
+  avg_bedtime: string | null;
+  bedtime_spread_min: number | null;
+  short_nights: number;
+  avg_deep_min: number | null;
+  avg_rem_min: number | null;
 };
 
 export async function interpret(input: InterpretInput, onUsage?: UsageSink): Promise<Interpretation> {
@@ -373,6 +385,7 @@ export async function interpret(input: InterpretInput, onUsage?: UsageSink): Pro
     computed_indices: input.indices.map((i) => ({ name: i.name, value: i.value, unit: i.unit, status: i.status, reference: i.reference })),
     earlier_results: input.history,
     checkin_answers: input.answers,
+    sleep_last_30_days: input.sleep ?? undefined,
   };
 
   const { response, usage } = await create({
@@ -391,7 +404,7 @@ export async function interpret(input: InterpretInput, onUsage?: UsageSink): Pro
   return parseJson<Interpretation>(response);
 }
 
-function parseJson<T>(response: Anthropic.Beta.BetaMessage): T {
+export function parseJson<T>(response: Anthropic.Beta.BetaMessage): T {
   if (response.stop_reason === "refusal") {
     throw new AnalysisError("refusal", "The model declined to process this report.");
   }

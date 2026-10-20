@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     body?: string;
     audience?: Audience;
     route?: string;
+    url?: string;
   };
   const title = (body.title ?? "").trim();
   const text = (body.body ?? "").trim();
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       body: text,
       audience: body.audience,
       createdBy: admin.id,
-      data: body.route ? { route: body.route } : {},
+      data: body.url && /^https:\/\/\S+$/.test(body.url) ? { url: body.url } : body.route && body.route.startsWith("/") ? { route: body.route } : {},
     });
     return json({ ok: true, ...result });
   } catch (err) {

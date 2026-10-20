@@ -6,10 +6,15 @@ import { useRouter } from "next/navigation";
 type AudienceType = "all" | "locale" | "platform" | "inactive" | "no_reports";
 
 const ROUTES = [
-  { value: "", label: "Главный экран" },
+  { value: "/", label: "Главный экран" },
+  { value: "/latest", label: "Последний разбор" },
+  { value: "/insights", label: "Рекомендации" },
   { value: "/upload", label: "Загрузка анализа" },
   { value: "/family", label: "Семья" },
-  { value: "/inbox", label: "Уведомления" },
+  { value: "/sleep", label: "Сон" },
+  { value: "/profile", label: "Профиль" },
+  { value: "/inbox", label: "Входящие" },
+  { value: "url", label: "Ссылка (сайт, статья)" },
 ];
 
 export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
@@ -20,7 +25,8 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
   const [locale, setLocale] = useState("en");
   const [platform, setPlatform] = useState("ios");
   const [days, setDays] = useState(7);
-  const [route, setRoute] = useState("");
+  const [route, setRoute] = useState("/");
+  const [url, setUrl] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -41,6 +47,10 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
       setResult({ ok: false, text: "Заполните заголовок и текст." });
       return;
     }
+    if (route === "url" && !/^https:\/\/\S+$/.test(url.trim())) {
+      setResult({ ok: false, text: "Ссылка должна начинаться с https://" });
+      return;
+    }
     if (!confirming) {
       setConfirming(true);
       return;
@@ -50,7 +60,7 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
     const res = await fetch("/api/admin/broadcast", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title, body, audience, route }),
+      body: JSON.stringify({ title, body, audience, ...(route === "url" ? { url: url.trim() } : { route }) }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
@@ -61,7 +71,7 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
     }
     setResult({
       ok: true,
-      text: `Отправлено: ${data.recipients} получателей, ${data.devices} устройств, доставлено пушей ${data.sent}, ошибок ${data.failed}. Сообщение также появилось во «Входящих» в приложении.`,
+      text: `Отправлено: ${data.recipients} получателей, ${data.devices} устройств, доставлено пушей ${data.sent}, ошибок ${data.failed}.${data.error ? ` Ошибка: ${data.error}` : ""} Сообщение также появилось во «Входящих» в приложении.`,
     });
     setTitle("");
     setBody("");
@@ -132,6 +142,12 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
           ))}
         </select>
       </label>
+      {route === "url" && (
+        <label className="field">
+          Ссылка
+          <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://labless.dilami.pro/ru/science" />
+        </label>
+      )}
       {result && <p className={result.ok ? "ok" : "err"}>{result.text}</p>}
       <div className="row">
         <button className={`btn ${confirming ? "btn--pen" : "btn--ink"}`} disabled={busy}>

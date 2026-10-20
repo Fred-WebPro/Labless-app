@@ -148,6 +148,9 @@ try {
     console.log("      findings:", analysis?.findings?.map((f) => f.title).join(" | "));
     console.log("      hidden:", analysis?.hidden_tests?.map((h) => `${h.name}=${h.estimate}`).join(" | "));
     console.log("      questions:", analysis?.checkin_questions?.map((q) => q.question).join(" | "));
+    const { data: usage } = await admin.from("ai_usage").select("kind, cost_usd, speed").eq("report_id", reportId);
+    const cost = (usage ?? []).reduce((s, u) => s + Number(u.cost_usd), 0);
+    ok((usage ?? []).length >= 2 && cost > 0, "AI cost recorded for the report", `${usage?.length} calls, $${cost.toFixed(4)}, ${usage?.map((u) => u.speed).join("/")}`);
     const isRu = /[а-яё]/i.test(analysis?.summary ?? "");
     ok(isRu, "reading written in the profile language (ru)");
 
@@ -180,6 +183,18 @@ try {
   } else {
     console.log("SKIP  analysis (pass a report file to test it)");
   }
+
+  // ---------- Ban ----------
+  await admin.from("profiles").update({ banned_at: new Date().toISOString() }).eq("id", b.user.id);
+  const bFamily = (await b.client.from("families").select("id").single()).data;
+  const { error: bannedInsert } = await b.client.from("members").insert({ family_id: bFamily.id, owner_id: b.user.id, name: "X", relation: "other" });
+  ok(!!bannedInsert, "banned account can't add family members");
+  const bannedAnalyze = await call(b.token, "/api/analyze", { reportId: crypto.randomUUID() });
+  ok(bannedAnalyze.status === 403, "banned account can't start an analysis", String(bannedAnalyze.status));
+  await admin.auth.admin.updateUserById(b.user.id, { ban_duration: "876000h" });
+  const banClient = createClient(URL, ANON, { auth: { persistSession: false } });
+  const { error: banLogin } = await banClient.auth.signInWithPassword({ email: b.email, password: b.password });
+  ok(!!banLogin && /banned/i.test(banLogin.message), "banned account can't sign in", banLogin?.message);
 
   // ---------- Events, push tokens, inbox ----------
   const { error: evErr } = await a.client.from("events").insert({ user_id: a.user.id, name: "app_open", platform: "ios" });

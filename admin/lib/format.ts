@@ -60,3 +60,19 @@ export const EVENT_LABEL: Record<string, string> = {
   language_changed: "Сменил язык",
   account_deleted: "Удалил аккаунт",
 };
+
+export const fmtUsd = (v: number | string | null | undefined) => {
+  const n = Number(v ?? 0);
+  if (!n) return "$0";
+  return n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+};
+
+export const ADMIN_ACTION_LABEL: Record<string, string> = {
+  ban: "Заблокирован админом",
+  unban: "Разблокирован админом",
+  grant_admin: "Выдан доступ к админке",
+  revoke_admin: "Убран доступ к админке",
+  note: "Изменена заметка",
+  delete_user: "Аккаунт удалён",
+  rerun_report: "Разбор перезапущен админом",
+};

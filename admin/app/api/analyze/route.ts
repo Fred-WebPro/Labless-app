@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { runAnalysis } from "@/lib/analysis/pipeline";
-import { adminDb, json, userFromRequest } from "@/lib/supabase";
+import { adminDb, isBanned, json, userFromRequest } from "@/lib/supabase";
 
 export const maxDuration = 300;
 
@@ -11,6 +11,7 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   const user = await userFromRequest(req);
   if (!user) return json({ error: "unauthorized" }, 401);
+  if (await isBanned(user.id)) return json({ error: "banned" }, 403);
 
   const { reportId } = (await req.json().catch(() => ({}))) as { reportId?: string };
   if (!reportId) return json({ error: "missing_report" }, 400);

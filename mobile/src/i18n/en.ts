@@ -54,7 +54,13 @@ export const en = {
       nameRequired: "Enter your name.",
       emailTaken: "This email already has an account. Sign in instead.",
       wrongCredentials: "Wrong email or password.",
+      banned: "This account is blocked. Contact support if you think this is a mistake.",
     },
+  },
+  blocked: {
+    title: "Account blocked",
+    body: "Access to this account has been blocked. If you think this is a mistake, contact Labless support.",
+    signOut: "Sign out",
   },
   onboarding: {
     title: "About you",

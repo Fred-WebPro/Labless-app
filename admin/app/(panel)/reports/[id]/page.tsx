@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { adminDb } from "@/lib/supabase";
-import { STATUS_LABEL, fmtDateTime, statusPill } from "@/lib/format";
+import { STATUS_LABEL, fmtDateTime, fmtNum, fmtUsd, statusPill } from "@/lib/format";
+import { RerunButton } from "@/components/UserActions";
+
+export const maxDuration = 300;
 
 type Json = Record<string, unknown>;
 
@@ -10,11 +13,13 @@ export default async function ReportDetail({ params }: { params: Promise<{ id: s
   const db = adminDb();
   const { data: report } = await db.from("reports").select("*, members(name, relation, sex, birth_date)").eq("id", id).maybeSingle();
   if (!report) notFound();
-  const [{ data: analysis }, { data: results }, { data: owner }] = await Promise.all([
+  const [{ data: analysis }, { data: results }, { data: owner }, { data: usage }] = await Promise.all([
     db.from("analyses").select("*").eq("report_id", id).maybeSingle(),
     db.from("results").select("*").eq("report_id", id).order("id"),
     db.from("profiles").select("email").eq("id", report.owner_id).maybeSingle(),
+    db.from("ai_usage").select("*").eq("report_id", id).order("created_at"),
   ]);
+  const cost = (usage ?? []).reduce((s, u) => s + Number(u.cost_usd), 0);
   const files = (report.files ?? []) as { path: string; type: string }[];
   const signed = files.length
     ? (await db.storage.from("reports").createSignedUrls(files.map((f) => f.path), 600)).data ?? []
@@ -35,6 +40,11 @@ export default async function ReportDetail({ params }: { params: Promise<{ id: s
             <span className={statusPill(report.status)}>{STATUS_LABEL[report.status]}</span>
           </p>
           {report.error && <p className="err">{report.error}</p>}
+          <div className="row" style={{ marginTop: 8 }}>
+            <span className="pill">ИИ: {fmtUsd(cost)}</span>
+            <span className="pill">{(usage ?? []).length} вызовов</span>
+            <RerunButton reportId={id} />
+          </div>
         </div>
       </div>
 
@@ -49,6 +59,13 @@ export default async function ReportDetail({ params }: { params: Promise<{ id: s
           ) : (
             <p className="empty">Разбора ещё нет</p>
           )}
+          <h2 style={{ marginTop: 18 }}>Вызовы ИИ</h2>
+          {(usage ?? []).map((u) => (
+            <div key={u.id} className="muted" style={{ fontSize: 13 }}>
+              {fmtDateTime(u.created_at)} · {u.kind === "extraction" ? "чтение" : "интерпретация"} · {u.model} · {u.speed === "fast" ? "быстро" : "обычно"} · {fmtNum(u.input_tokens)}/{fmtNum(u.output_tokens)} ток. · {fmtUsd(u.cost_usd)}
+            </div>
+          ))}
+          {!usage?.length && <p className="muted">Нет записей</p>}
           <h2 style={{ marginTop: 18 }}>Файлы</h2>
           <div className="row">
             {signed.map((s, i) =>

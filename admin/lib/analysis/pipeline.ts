@@ -1,5 +1,5 @@
 import { adminDb } from "@/lib/supabase";
-import { AnalysisError, MODEL, extractReport, interpret } from "@/lib/analysis/claude";
+import { AnalysisError, MODEL, extractReport, interpret, type UsageSink } from "@/lib/analysis/claude";
 import { ageFrom, computeIndices } from "@/lib/analysis/indices";
 import { markerByKey } from "@/lib/analysis/markers";
 
@@ -36,6 +36,10 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
   const { data: member } = await db.from("members").select("*").eq("id", report.member_id).single();
   const { data: profile } = await db.from("profiles").select("locale").eq("id", report.owner_id).maybeSingle();
   const locale = profile?.locale ?? "en";
+  const logUsage: UsageSink = async (kind, usage) => {
+    const { error } = await db.from("ai_usage").insert({ user_id: report.owner_id, report_id: reportId, kind, ...usage });
+    if (error) console.error("ai_usage insert failed", error.message);
+  };
 
   try {
     let sex: "male" | "female" | null = member?.sex ?? null;
@@ -47,7 +51,7 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
       const files = await loadFiles((report.files ?? []) as ReportFile[]);
       if (files.length === 0) throw new AnalysisError("not_a_report", "No files were uploaded.");
 
-      const extraction = await extractReport(files, locale);
+      const extraction = await extractReport(files, locale, logUsage);
       const rows = (extraction.results ?? []).filter((r) => r.name);
       if (!extraction.is_lab_report || rows.length === 0) {
         throw new AnalysisError("not_a_report", "We couldn't find lab results in these files.");
@@ -134,7 +138,7 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
       indices,
       history: (history ?? []).map((h) => ({ marker: h.marker, date: h.collected_at, value: Number(h.value) })),
       answers,
-    });
+    }, logUsage);
 
     // Keep questions that were already answered so their answers stay readable.
     const answeredIds = new Set(answers.length ? Object.keys(existing?.checkin_answers ?? {}) : []);

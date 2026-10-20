@@ -469,3 +469,20 @@ label.field {
   width: auto;
   min-width: 220px;
 }
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #efefea 0%, #f7f7f3 50%, #efefea 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

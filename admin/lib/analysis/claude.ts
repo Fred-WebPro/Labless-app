@@ -18,22 +18,69 @@ export class AnalysisError extends Error {
 
 type CreateParams = Anthropic.Beta.MessageCreateParamsNonStreaming;
 
+/** USD per million tokens at standard speed. Fast mode doubles input and output prices. */
+const PRICES: Record<string, { input: number; output: number; cacheRead: number }> = {
+  "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2 },
+  "claude-opus-5": { input: 5, output: 25, cacheRead: 0.5 },
+  "claude-opus-4-8": { input: 5, output: 25, cacheRead: 0.5 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.2 },
+};
+
+export type Usage = {
+  model: string;
+  speed: "fast" | "standard";
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cost_usd: number;
+  duration_ms: number;
+};
+
+export type UsageSink = (kind: "extraction" | "interpretation", usage: Usage) => Promise<void> | void;
+
+function usageOf(response: Anthropic.Beta.BetaMessage, speed: "fast" | "standard", started: number): Usage {
+  const u = response.usage as Anthropic.Beta.BetaUsage & { speed?: string | null };
+  const actualSpeed = u.speed === "fast" ? "fast" : u.speed === "standard" ? "standard" : speed;
+  const price = PRICES[response.model] ?? PRICES[MODEL];
+  const mult = actualSpeed === "fast" ? 2 : 1;
+  const input = u.input_tokens ?? 0;
+  const output = u.output_tokens ?? 0;
+  const cacheRead = u.cache_read_input_tokens ?? 0;
+  const cacheWrite = u.cache_creation_input_tokens ?? 0;
+  const cost =
+    (input * price.input * mult + output * price.output * mult + cacheRead * price.cacheRead * mult + cacheWrite * price.input * 1.25 * mult) / 1_000_000;
+  return {
+    model: response.model,
+    speed: actualSpeed,
+    input_tokens: input,
+    output_tokens: output,
+    cache_read_tokens: cacheRead,
+    cache_write_tokens: cacheWrite,
+    cost_usd: Math.round(cost * 1_000_000) / 1_000_000,
+    duration_ms: Date.now() - started,
+  };
+}
+
 /**
  * Runs a request in fast mode (higher output speed) and falls back to standard speed
  * when fast mode is rate limited or not available for this request.
  */
-async function create(params: Omit<CreateParams, "betas" | "fallbacks">): Promise<Anthropic.Beta.BetaMessage> {
+async function create(params: Omit<CreateParams, "betas" | "fallbacks">): Promise<{ response: Anthropic.Beta.BetaMessage; usage: Usage }> {
   const base = { ...params, fallbacks: "default" as const };
+  const started = Date.now();
   try {
-    return await anthropic().beta.messages.create({
+    const response = await anthropic().beta.messages.create({
       ...base,
       betas: ["server-side-fallback-2026-07-01", "fast-mode-2026-02-01"],
       speed: "fast",
     } as CreateParams);
+    return { response, usage: usageOf(response, "fast", started) };
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.BadRequestError) {
       console.warn("fast mode unavailable, using standard speed:", err.message);
-      return anthropic().beta.messages.create({ ...base, betas: ["server-side-fallback-2026-07-01"] } as CreateParams);
+      const response = await anthropic().beta.messages.create({ ...base, betas: ["server-side-fallback-2026-07-01"] } as CreateParams);
+      return { response, usage: usageOf(response, "standard", started) };
     }
     throw err;
   }
@@ -120,7 +167,7 @@ ${CATALOG}`;
 
 type FileInput = { mediaType: string; data: string };
 
-export async function extractReport(files: FileInput[], locale: string): Promise<Extraction> {
+export async function extractReport(files: FileInput[], locale: string, onUsage?: UsageSink): Promise<Extraction> {
   const content: Anthropic.Beta.BetaContentBlockParam[] = files.map((f) =>
     f.mediaType === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data } }
@@ -135,13 +182,14 @@ export async function extractReport(files: FileInput[], locale: string): Promise
   );
   content.push({ type: "text", text: `Extract every test result from this laboratory report. Write display_name in ${LANG[locale] ?? "English"}.` });
 
-  const response = await create({
+  const { response, usage } = await create({
     model: MODEL,
     max_tokens: 16000,
     system: EXTRACTION_SYSTEM,
     output_config: { effort: "low", format: { type: "json_schema", schema: EXTRACTION_SCHEMA as unknown as Record<string, unknown> } },
     messages: [{ role: "user", content }],
   });
+  await onUsage?.("extraction", usage);
   return parseJson<Extraction>(response);
 }
 
@@ -289,7 +337,7 @@ type InterpretInput = {
   answers: { question: string; answer: string }[];
 };
 
-export async function interpret(input: InterpretInput): Promise<Interpretation> {
+export async function interpret(input: InterpretInput, onUsage?: UsageSink): Promise<Interpretation> {
   const payload = {
     language: LANG[input.locale] ?? "English",
     person: input.person,
@@ -300,7 +348,7 @@ export async function interpret(input: InterpretInput): Promise<Interpretation> 
     checkin_answers: input.answers,
   };
 
-  const response = await create({
+  const { response, usage } = await create({
     model: MODEL,
     max_tokens: 16000,
     system: INTERPRETATION_SYSTEM,
@@ -312,6 +360,7 @@ export async function interpret(input: InterpretInput): Promise<Interpretation> 
       },
     ],
   });
+  await onUsage?.("interpretation", usage);
   return parseJson<Interpretation>(response);
 }
 

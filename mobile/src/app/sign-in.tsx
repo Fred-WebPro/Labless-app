@@ -25,7 +25,7 @@ export default function SignIn() {
     const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setBusy(false);
     if (err) {
-      setError(/fetch|network/i.test(err.message) ? t.common.networkError : t.auth.errors.wrongCredentials);
+      setError(/banned/i.test(err.message) ? t.auth.errors.banned : /fetch|network/i.test(err.message) ? t.common.networkError : t.auth.errors.wrongCredentials);
       return;
     }
     track("sign_in");

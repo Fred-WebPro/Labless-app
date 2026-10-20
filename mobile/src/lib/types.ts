@@ -9,6 +9,7 @@ export type Profile = {
   role: string;
   onboarded: boolean;
   notifications_enabled: boolean;
+  banned_at: string | null;
   created_at: string;
 };
 

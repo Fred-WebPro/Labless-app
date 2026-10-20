@@ -25,6 +25,12 @@ export async function userFromRequest(req: Request): Promise<User | null> {
   return data.user;
 }
 
+/** True when the account has been blocked by an admin. */
+export async function isBanned(userId: string): Promise<boolean> {
+  const { data } = await adminDb().from("profiles").select("banned_at").eq("id", userId).maybeSingle();
+  return !!data?.banned_at;
+}
+
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
     .split(",")

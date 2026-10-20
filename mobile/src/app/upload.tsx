@@ -52,7 +52,14 @@ export default function Upload() {
       router.replace(`/report/${reportId}`);
     } catch (err) {
       setProgress(null);
-      toast(err instanceof ApiError && err.code === "network" ? t.common.networkError : t.common.genericError, "error");
+      toast(
+        err instanceof ApiError && err.code === "network"
+          ? t.common.networkError
+          : err instanceof ApiError && err.code === "banned"
+            ? t.auth.errors.banned
+            : t.common.genericError,
+        "error",
+      );
     }
   };
 

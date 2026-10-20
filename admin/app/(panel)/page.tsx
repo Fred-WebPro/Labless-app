@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DailyBars, HBars } from "@/components/Charts";
 import { adminDb } from "@/lib/supabase";
-import { EVENT_LABEL, RELATION_LABEL, STATUS_LABEL, ago, fmtNum, statusPill } from "@/lib/format";
+import { EVENT_LABEL, RELATION_LABEL, STATUS_LABEL, ago, fmtNum, fmtUsd, statusPill } from "@/lib/format";
 
 export default async function Dashboard() {
   const db = adminDb();
@@ -13,7 +13,7 @@ export default async function Dashboard() {
     db.from("profiles").select("id, email, full_name, created_at, platform").order("created_at", { ascending: false }).limit(8),
   ]);
   const t = (totalsRows?.[0] ?? {}) as Record<string, number | null>;
-  const days = (daily ?? []) as { day: string; new_users: number; active_users: number; reports: number; ready: number; failed: number }[];
+  const days = (daily ?? []) as { day: string; new_users: number; active_users: number; reports: number; ready: number; failed: number; ai_cost: number }[];
   const br = (breakdown ?? []) as { kind: string; label: string; value: number }[];
   const pick = (kind: string, labels: Record<string, string> = {}) =>
     br.filter((b) => b.kind === kind).sort((a, b) => b.value - a.value).slice(0, 10).map((b) => ({ label: labels[b.label] ?? b.label, value: Number(b.value) }));
@@ -40,6 +40,9 @@ export default async function Dashboard() {
         <Stat label="Успешных разборов" value={successRate == null ? null : `${successRate}%`} hint={`${fmtNum(t.reports_failed)} с ошибкой`} />
         <Stat label="Среднее время разбора" value={t.avg_processing_ms ? `${Math.round(Number(t.avg_processing_ms) / 1000)} с` : null} />
         <Stat label="Устройства с пушами" value={t.push_tokens} hint={`${fmtNum(t.broadcasts)} рассылок`} />
+        <Stat label="ИИ сегодня" value={fmtUsd(t.ai_cost_today)} hint={`${fmtUsd(t.ai_cost_30d)} за 30 дней`} />
+        <Stat label="ИИ всего" value={fmtUsd(t.ai_cost_total)} hint={`в среднем ${fmtUsd(t.ai_cost_per_report)} за анализ`} />
+        <Stat label="Заблокировано" value={t.banned} />
       </div>
 
       <div className="grid grid--2" style={{ marginTop: 14 }}>
@@ -62,6 +65,10 @@ export default async function Dashboard() {
               { label: "Ошибки", color: "#d2261c", values: days.map((d) => Number(d.failed)) },
             ]}
           />
+        </section>
+        <section className="card">
+          <h2>Расходы на ИИ по дням, $</h2>
+          <DailyBars days={days.map((d) => d.day)} series={[{ label: "Стоимость, $", color: "#d2261c", values: days.map((d) => Math.round(Number(d.ai_cost) * 100) / 100) }]} />
         </section>
         <section className="card">
           <h2>Что делают пользователи (30 дней)</h2>

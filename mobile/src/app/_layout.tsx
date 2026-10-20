@@ -20,6 +20,8 @@ import { registerPush } from "@/lib/push";
 import { queryClient } from "@/lib/query";
 import { SelectedMemberProvider } from "@/lib/selected";
 import { colors } from "@/lib/theme";
+import { supabase } from "@/lib/supabase";
+import { Button, T } from "@/components/ui";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -82,6 +84,10 @@ function Gate() {
     return () => sub.remove();
   }, []);
 
+  if (session && profile.data?.banned_at) {
+    return <Blocked />;
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper }}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper }, animation: "default" }}>
@@ -93,6 +99,20 @@ function Gate() {
         <Stack.Screen name="legal" options={{ presentation: "modal" }} />
       </Stack>
       {!ready ? <View style={{ position: "absolute", inset: 0, backgroundColor: colors.paper }} /> : null}
+    </View>
+  );
+}
+
+function Blocked() {
+  const { t } = useI18n();
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.paper, justifyContent: "center", padding: 28, gap: 14 }}>
+      <T v="title">{t.blocked.title}</T>
+      <T v="body">{t.blocked.body}</T>
+      <Button label={t.blocked.signOut} kind="ink" onPress={() => supabase.auth.signOut()} style={{ marginTop: 10 }} />
     </View>
   );
 }

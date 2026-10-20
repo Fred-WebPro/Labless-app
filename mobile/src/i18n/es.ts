@@ -56,7 +56,13 @@ export const es: typeof en = {
       nameRequired: "Introduce tu nombre.",
       emailTaken: "Este correo ya tiene cuenta. Entra con él.",
       wrongCredentials: "Correo o contraseña incorrectos.",
+      banned: "Esta cuenta está bloqueada. Contacta con soporte si crees que es un error.",
     },
+  },
+  blocked: {
+    title: "Cuenta bloqueada",
+    body: "El acceso a esta cuenta está bloqueado. Si crees que es un error, contacta con el soporte de Labless.",
+    signOut: "Cerrar sesión",
   },
   onboarding: {
     title: "Sobre ti",

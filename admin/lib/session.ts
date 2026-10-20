@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
@@ -22,21 +23,21 @@ export async function sessionClient() {
 
 export type Admin = { id: string; email: string };
 
-/** Returns the signed-in admin, or null when signed out or not an admin. */
-export async function currentAdmin(): Promise<Admin | null> {
+/**
+ * Returns the signed-in admin, or null when signed out or not an admin.
+ * Verifies the session JWT (locally when the project uses signing keys) and is
+ * memoized per request, so layouts and pages share one check.
+ */
+export const currentAdmin = cache(async (): Promise<Admin | null> => {
   const supabase = await sessionClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  if (!user?.email) return null;
-  const email = user.email.toLowerCase();
-
-  if (adminEmails().includes(email)) {
-    await adminDb().from("profiles").update({ role: "admin" }).eq("id", user.id).neq("role", "admin");
-    return { id: user.id, email };
-  }
-  const { data: profile } = await adminDb().from("profiles").select("role").eq("id", user.id).maybeSingle();
-  return profile?.role === "admin" ? { id: user.id, email } : null;
-}
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims as { sub?: string; email?: string } | undefined;
+  if (!claims?.sub || !claims.email) return null;
+  const email = claims.email.toLowerCase();
+  if (adminEmails().includes(email)) return { id: claims.sub, email };
+  const { data: profile } = await adminDb().from("profiles").select("role").eq("id", claims.sub).maybeSingle();
+  return profile?.role === "admin" ? { id: claims.sub, email } : null;
+});
 
 export async function requireAdmin(): Promise<Admin> {
   const admin = await currentAdmin();

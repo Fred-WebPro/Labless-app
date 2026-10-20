@@ -10,7 +10,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://gbuhhroilhurlbpmnoxo.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdidWhocm9pbGh1cmxicG1ub3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MzMzNjUsImV4cCI6MjEwODAwOTM2NX0.0fT6q2WmtATJS9dHifrYW6RfbN5vOIMKiDCir1oxPz8",
-        "EXPO_PUBLIC_API_URL": "https://labless-admin.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://admin.labless.dilami.pro"
       },
       "android": { "buildType": "apk" }
     },
@@ -19,7 +19,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://gbuhhroilhurlbpmnoxo.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdidWhocm9pbGh1cmxicG1ub3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MzMzNjUsImV4cCI6MjEwODAwOTM2NX0.0fT6q2WmtATJS9dHifrYW6RfbN5vOIMKiDCir1oxPz8",
-        "EXPO_PUBLIC_API_URL": "https://labless-admin.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://admin.labless.dilami.pro"
       },
       "android": { "buildType": "apk" }
     },
@@ -28,7 +28,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://gbuhhroilhurlbpmnoxo.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdidWhocm9pbGh1cmxicG1ub3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MzMzNjUsImV4cCI6MjEwODAwOTM2NX0.0fT6q2WmtATJS9dHifrYW6RfbN5vOIMKiDCir1oxPz8",
-        "EXPO_PUBLIC_API_URL": "https://labless-admin.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://admin.labless.dilami.pro"
       }
     }
   },

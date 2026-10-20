@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "labless",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#FFFFFF",
     "ios": {
       "bundleIdentifier": "com.labless.app",
@@ -81,6 +81,14 @@
               "application/pdf"
             ]
           }
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Labless reads your sleep to explain your blood test results, for example how short sleep raises insulin and inflammation.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
         }
       ]
     ],

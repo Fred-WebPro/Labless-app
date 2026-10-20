@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
-import { colors, fonts } from "@/lib/theme";
+import { fonts, useHex } from "@/lib/theme";
 
 type Point = { x: string; y: number };
 
 /** Small trend line, scaled to its own min and max. */
-export function Sparkline({ points, width = 96, height = 32, color = colors.ink }: { points: number[]; width?: number; height?: number; color?: string }) {
+export function Sparkline({ points, width = 96, height = 32, color }: { points: number[]; width?: number; height?: number; color?: "ink" | "pen" }) {
+  const hex = useHex();
   if (points.length < 2) return <View style={{ width, height }} />;
   const min = Math.min(...points);
   const max = Math.max(...points);
@@ -17,14 +18,15 @@ export function Sparkline({ points, width = 96, height = 32, color = colors.ink 
   const last = points[points.length - 1];
   return (
     <Svg width={width} height={height}>
-      <Path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
-      <Circle cx={(points.length - 1) * step} cy={y(last)} r={3.5} fill={colors.pen} />
+      <Path d={d} stroke={color === "pen" ? hex.pen : hex.ink} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+      <Circle cx={(points.length - 1) * step} cy={y(last)} r={3.5} fill={hex.pen} />
     </Svg>
   );
 }
 
 /** Full trend chart with the reference band, axis labels and every value marked. */
 export function TrendChart({ data, low, high, format }: { data: Point[]; low?: number | null; high?: number | null; format: (v: number) => string }) {
+  const colors = useHex();
   const [width, setWidth] = useState(0);
   const height = 200;
   const padL = 44;

@@ -1,14 +1,18 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PenUnderline } from "@/components/Pen";
 import { ReportItem } from "@/components/ReportItem";
+import { Sparkline } from "@/components/Chart";
+import { InsightsPreview } from "@/components/Insights";
 import { AdviceCard, StatusBadge } from "@/components/report";
+import { SleepCard } from "@/components/Sleep";
 import { Avatar, Button, Card, Empty, Screen, SectionTitle, T, tap } from "@/components/ui";
 import { fill, formatDate, useI18n } from "@/i18n";
-import { useAnalyses, useMembers, useProfile, useReports } from "@/lib/data";
+import { seriesByMarker } from "@/lib/compare";
+import { useAnalyses, useMemberResults, useMembers, useProfile, useReports } from "@/lib/data";
 import { useSelectedMember } from "@/lib/selected";
 import { colors, fonts, radius } from "@/lib/theme";
 import { useRefreshOnFocus } from "@/lib/useRefreshOnFocus";
@@ -22,6 +26,16 @@ export default function Home() {
   const reports = useReports(selected?.id);
   const analyses = useAnalyses();
   const [refreshing, setRefreshing] = useState(false);
+  const results = useMemberResults(selected?.id);
+  const moved = useMemo(
+    () =>
+      seriesByMarker(results.data ?? [])
+        .filter((s) => s.pct != null && Math.abs(s.pct) >= 3)
+        .sort((a, b) => Math.abs(b.pct!) - Math.abs(a.pct!))
+        .slice(0, 3),
+    [results.data],
+  );
+  const hasReady = (reports.data ?? []).some((r) => r.status === "ready");
   useRefreshOnFocus(useCallback(() => {
     reports.refetch();
     analyses.refetch();
@@ -39,7 +53,7 @@ export default function Home() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await Promise.all([reports.refetch(), analyses.refetch()]);
+    await Promise.all([reports.refetch(), analyses.refetch(), results.refetch()]);
     setRefreshing(false);
   };
 
@@ -65,8 +79,8 @@ export default function Home() {
                 }}
                 style={[styles.chip, on && styles.chipOn]}
               >
-                <Avatar name={m.name} color={m.color} size={26} />
-                <Text style={[styles.chipText, on && { color: "#fff" }]} numberOfLines={1}>
+                <Avatar name={m.name} color={m.color} size={26} photo={m.photo_url} />
+                <Text style={[styles.chipText, on && { color: colors.onInk }]} numberOfLines={1}>
                   {m.is_self ? t.member.you : m.name}
                 </Text>
               </Pressable>
@@ -148,6 +162,47 @@ export default function Home() {
             </>
           ) : null}
 
+          {hasReady && selected ? (
+            <>
+              <SectionTitle title={t.insights.title} />
+              <InsightsPreview scope="member" memberId={selected.id} title={selected.is_self ? t.insights.forYou : fill(t.insights.forName, { name: selected.name.split(" ")[0] })} />
+            </>
+          ) : null}
+
+          {hasReady && selected ? (
+            <>
+              <SectionTitle title={t.home.analytics} action={t.common.seeAll} onAction={() => router.push(`/member/${selected.id}`)} />
+              <Card onPress={() => router.push(`/member/${selected.id}`)} style={{ paddingVertical: 6 }}>
+                {moved.length ? (
+                  moved.map((s) => (
+                    <View key={s.marker} style={styles.moveRow}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <T v="smallMedium" numberOfLines={1}>
+                          {s.name}
+                        </T>
+                        <T v="caption" style={{ color: s.outOfRange ? colors.pen : colors.ink3 }}>
+                          {s.pct! > 0 ? "↑" : "↓"} {Math.abs(Math.round(s.pct!))}% · {s.values.length} {t.home.points}
+                        </T>
+                      </View>
+                      <Sparkline points={s.values} width={70} height={28} color={s.outOfRange ? "pen" : "ink"} />
+                    </View>
+                  ))
+                ) : (
+                  <T v="small" style={{ paddingVertical: 12 }}>
+                    {t.home.analyticsEmpty}
+                  </T>
+                )}
+              </Card>
+            </>
+          ) : null}
+
+          {selected?.is_self ? (
+            <>
+              <SectionTitle title={t.sleep.title} />
+              <SleepCard memberId={selected.id} />
+            </>
+          ) : null}
+
           <SectionTitle
             title={t.home.reports}
             action={selected ? t.common.seeAll : undefined}
@@ -187,6 +242,7 @@ const styles = StyleSheet.create({
   latest: { gap: 12, padding: 20 },
   bullet: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
   bulletMark: { fontFamily: fonts.hand, fontSize: 22, lineHeight: 22, color: colors.pen, width: 14 },
+  moveRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule },
   next: {
     flexDirection: "row",
     gap: 10,

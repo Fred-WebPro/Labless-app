@@ -3,7 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Header, Screen, T } from "@/components/ui";
 import { useI18n } from "@/i18n";
-import { API_URL } from "@/lib/env";
+import { RESET_URL } from "@/lib/env";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 
@@ -20,7 +20,7 @@ export default function Forgot() {
   const submit = async () => {
     if (!EMAIL.test(email.trim())) return setError(t.auth.errors.invalidEmail);
     setBusy(true);
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${API_URL}/auth/reset` });
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: RESET_URL });
     setBusy(false);
     if (err && /fetch|network/i.test(err.message)) return setError(t.common.networkError);
     // Same message whether or not the email exists, so accounts can't be probed.

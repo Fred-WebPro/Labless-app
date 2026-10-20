@@ -157,6 +157,36 @@ try {
     const isRu = /[а-яё]/i.test(analysis?.summary ?? "");
     ok(isRu, "reading written in the profile language (ru)");
 
+    // Recommendations are generated in the background right after the reading.
+    let personal = null;
+    let family = null;
+    for (let i = 0; i < 45 && !(personal && family); i++) {
+      const { data: rows } = await a.client.from("insights").select("key, headline, items, scope").eq("owner_id", a.user.id);
+      personal = rows?.find((r) => r.scope === "member") ?? null;
+      family = rows?.find((r) => r.scope === "family") ?? null;
+      if (!(personal && family)) await sleep(3000);
+    }
+    ok((personal?.items?.length ?? 0) >= 3, "personal recommendations generated", String(personal?.items?.length ?? 0));
+    ok((family?.items?.length ?? 0) >= 3, "family recommendations generated", String(family?.items?.length ?? 0));
+    console.log("      personal:", personal?.headline, "|", personal?.items?.map((x) => `[${x.kind}] ${x.title}`).join(" | "));
+    console.log("      family:", family?.headline, "|", family?.items?.map((x) => `[${x.kind}] ${x.title}`).join(" | "));
+    const t0 = Date.now();
+    const cached = await call(a.token, "/api/insights", { scope: "member", memberId: self.id });
+    const cachedBody = await cached.json();
+    ok(cached.status === 200 && !!cachedBody.insights && Date.now() - t0 < 5000, "insights API serves the saved recommendations", `${Date.now() - t0} ms`);
+    const foreign = await call(b.token, "/api/insights", { scope: "member", memberId: self.id });
+    ok(foreign.status === 404, "insights API refuses another user's member");
+    const { data: insightUsage } = await admin.from("ai_usage").select("cost_usd").eq("user_id", a.user.id).eq("kind", "insights");
+    console.log("      insights cost: $" + (insightUsage ?? []).reduce((s, u) => s + Number(u.cost_usd), 0).toFixed(4));
+    const { error: writeInsight } = await a.client.from("insights").insert({ owner_id: a.user.id, scope: "member", key: "x" });
+    ok(!!writeInsight, "client can't write recommendations");
+
+    // Sleep rows are the owner's only.
+    const { error: sleepErr } = await a.client.from("sleep_nights").upsert({ owner_id: a.user.id, night: "2026-10-01", asleep_min: 400 });
+    ok(!sleepErr, "store a night of sleep", sleepErr?.message);
+    const { data: otherSleep } = await b.client.from("sleep_nights").select("night").eq("owner_id", a.user.id);
+    ok((otherSleep ?? []).length === 0, "sleep hidden from other users");
+
     const { error: tamper } = await a.client.from("reports").update({ status: "ready", error: "x" }).eq("id", reportId);
     ok(!!tamper, "client can't overwrite processing fields");
 

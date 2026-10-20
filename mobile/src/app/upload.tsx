@@ -110,8 +110,8 @@ export default function Upload() {
                 }}
                 style={[styles.member, on && styles.memberOn]}
               >
-                <Avatar name={m.name} color={m.color} size={28} />
-                <Text style={[styles.memberText, on && { color: "#fff" }]} numberOfLines={1}>
+                <Avatar name={m.name} color={m.color} size={28} photo={m.photo_url} />
+                <Text style={[styles.memberText, on && { color: colors.onInk }]} numberOfLines={1}>
                   {m.is_self ? t.member.you : m.name}
                 </Text>
               </Pressable>

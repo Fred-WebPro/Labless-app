@@ -38,8 +38,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               toast.kind === "error" && { backgroundColor: colors.pen },
             ]}
           >
-            <Feather name={toast.kind === "error" ? "alert-circle" : "check"} size={18} color="#fff" />
-            <Text style={styles.text}>{toast.message}</Text>
+            <Feather name={toast.kind === "error" ? "alert-circle" : "check"} size={18} color={toast.kind === "error" ? "#fff" : colors.onInk} />
+            <Text style={[styles.text, { color: toast.kind === "error" ? "#fff" : colors.onInk }]}>{toast.message}</Text>
           </Animated.View>
         </View>
       ) : null}

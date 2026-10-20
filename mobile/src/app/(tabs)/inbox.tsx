@@ -1,8 +1,10 @@
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 import { Empty, LinkButton, Screen, T, tap } from "@/components/ui";
+import { hasTarget, openTarget } from "@/lib/notify";
 import { formatDate, useI18n } from "@/i18n";
 import { track } from "@/lib/analytics";
 import { useInbox, useMarkRead } from "@/lib/data";
@@ -50,8 +52,7 @@ export default function Inbox() {
               onPress={() => {
                 tap();
                 if (!n.read_at) markRead.mutate([n.id]);
-                const route = n.data?.route;
-                if (route && route.startsWith("/")) router.push(route as never);
+                if (hasTarget(n.data)) openTarget(n.data);
               }}
               style={({ pressed }) => [styles.item, pressed && { backgroundColor: colors.paper2 }]}
             >
@@ -60,6 +61,14 @@ export default function Inbox() {
                 <T v="bodyMedium">{n.title}</T>
                 <T v="small">{n.body}</T>
                 <T v="caption">{formatDate(n.created_at, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</T>
+                {hasTarget(n.data) ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                    <T v="smallMedium" style={{ color: colors.pen }}>
+                      {n.data?.url ? t.inbox.openLink : t.inbox.open}
+                    </T>
+                    <Feather name={n.data?.url ? "external-link" : "arrow-right"} size={14} color={colors.pen} />
+                  </View>
+                ) : null}
               </View>
             </Pressable>
           ))}

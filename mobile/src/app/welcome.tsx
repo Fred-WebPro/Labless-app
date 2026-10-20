@@ -24,7 +24,7 @@ function SlideArt({ index }: { index: number }) {
   return (
     <View style={{ flexDirection: "row", gap: -12 }}>
       {[colors.pen, colors.ink, "#2F5BD3", "#1F7A4D"].map((c, i) => (
-        <View key={c} style={[styles.bubble, { backgroundColor: c, marginLeft: i ? -14 : 0 }]} />
+        <View key={i} style={[styles.bubble, { backgroundColor: c, marginLeft: i ? -14 : 0 }]} />
       ))}
     </View>
   );
@@ -59,7 +59,7 @@ export default function Welcome() {
               }}
               style={[styles.lang, locale === l.code && styles.langOn]}
             >
-              <Text style={[styles.langText, locale === l.code && { color: "#fff" }]}>{l.code.toUpperCase()}</Text>
+              <Text style={[styles.langText, locale === l.code && { color: colors.onInk }]}>{l.code.toUpperCase()}</Text>
             </Pressable>
           ))}
         </View>
@@ -128,13 +128,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 16,
     gap: 4,
-    backgroundColor: "#fff",
+    backgroundColor: colors.paper,
     transform: [{ rotate: "-2deg" }],
   },
   sheetRow: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule, paddingVertical: 8 },
   sheetText: { fontFamily: fonts.mono, fontSize: 14, color: colors.ink },
   sheetNote: { fontFamily: fonts.hand, fontSize: 21, color: colors.pen, marginTop: 2 },
-  bubble: { width: 74, height: 74, borderRadius: 37, borderWidth: 4, borderColor: "#fff" },
+  bubble: { width: 74, height: 74, borderRadius: 37, borderWidth: 4, borderColor: colors.paper },
   dots: { flexDirection: "row", justifyContent: "center", gap: 8, paddingVertical: 18 },
   dotItem: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.ruleStrong },
   dotOn: { width: 22, backgroundColor: colors.ink },

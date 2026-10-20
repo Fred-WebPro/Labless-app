@@ -1,3 +1,4 @@
+import { File, Paths } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
@@ -83,5 +84,17 @@ export async function shareDoctorPdf(input: Input) {
     return;
   }
   const { uri } = await Print.printToFileAsync({ html: markup });
-  await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: input.t.doctorPdf.title });
+  // A readable file name, so it arrives in Telegram or Mail as "Labless – Anna – 14 Oct 2026.pdf".
+  let shareUri = uri;
+  try {
+    const date = formatDate(input.report.collected_at ?? input.report.created_at, input.locale).replace(/[\\/:*?"<>|]/g, "-");
+    const name = `Labless – ${(input.member?.name ?? "").replace(/[\\/:*?"<>|]/g, "")} – ${date}.pdf`;
+    const dest = new File(Paths.cache, name);
+    if (dest.exists) dest.delete();
+    new File(uri).copy(dest);
+    shareUri = dest.uri;
+  } catch {
+    // keep the generated name
+  }
+  await Sharing.shareAsync(shareUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: input.t.doctorPdf.title });
 }

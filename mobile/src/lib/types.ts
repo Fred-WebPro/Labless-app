@@ -25,6 +25,9 @@ export type Member = {
   birth_date: string | null;
   color: string;
   is_self: boolean;
+  photo_path: string | null;
+  /** Signed URL for photo_path, added by useMembers. */
+  photo_url?: string | null;
   created_at: string;
 };
 
@@ -111,11 +114,30 @@ export type Result = {
   created_at: string;
 };
 
+export type InsightItem = {
+  kind: "connection" | "experiment" | "timing" | "ask_doctor" | "relax" | "family";
+  title: string;
+  detail: string;
+  why: string;
+  horizon: "now" | "weeks" | "next_test";
+  readout: string;
+  members: string[];
+};
+
+export type Insights = {
+  key: string;
+  scope: "member" | "family";
+  member_id: string | null;
+  headline: string | null;
+  items: InsightItem[];
+  updated_at: string;
+};
+
 export type InboxItem = {
   id: string;
   title: string;
   body: string;
-  data: { route?: string } | null;
+  data: { route?: string; url?: string } | null;
   read_at: string | null;
   created_at: string;
 };

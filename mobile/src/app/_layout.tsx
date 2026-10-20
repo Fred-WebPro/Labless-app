@@ -20,6 +20,8 @@ import { registerPush } from "@/lib/push";
 import { queryClient } from "@/lib/query";
 import { SelectedMemberProvider } from "@/lib/selected";
 import { hasPendingShare } from "@/lib/share";
+import { openTarget } from "@/lib/notify";
+import { syncSleep } from "@/lib/sleep";
 import { colors } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { Button, T } from "@/components/ui";
@@ -65,9 +67,14 @@ function Gate() {
     if (!opened.current) {
       opened.current = true;
       ping(locale);
+      syncSleep();
       if (profile.data?.notifications_enabled !== false) registerPush(false);
     }
-    const sub = AppState.addEventListener("change", (s) => s === "active" && ping(locale));
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s !== "active") return;
+      ping(locale);
+      syncSleep();
+    });
     return () => sub.remove();
   }, [session, locale, profile.data?.notifications_enabled]);
 
@@ -75,17 +82,19 @@ function Gate() {
     if (session && pathname) trackScreen(pathname);
   }, [pathname, session]);
 
-  // Opening a push notification navigates to the screen it points at.
+  // Opening a push notification goes to the screen or link it points at,
+  // also when the notification is what launched the app.
+  const lastResponse = Notifications.useLastNotificationResponse();
+  const handled = useRef<string | null>(null);
   useEffect(() => {
-    if (Platform.OS === "web") return;
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as { route?: string; broadcastId?: string } | undefined;
-      track("push_opened", { broadcast_id: data?.broadcastId ?? null });
-      const route = typeof data?.route === "string" && data.route.startsWith("/") ? data.route : "/inbox";
-      router.push(route as never);
-    });
-    return () => sub.remove();
-  }, []);
+    if (Platform.OS === "web" || !lastResponse || !ready || !session || needsOnboarding) return;
+    const id = lastResponse.notification.request.identifier;
+    if (handled.current === id) return;
+    handled.current = id;
+    const data = lastResponse.notification.request.content.data as { route?: string; url?: string; broadcastId?: string } | undefined;
+    track("push_opened", { broadcast_id: data?.broadcastId ?? null, route: data?.route ?? null });
+    setTimeout(() => openTarget(data), 250);
+  }, [lastResponse, ready, session, needsOnboarding]);
 
   if (session && profile.data?.banned_at) {
     return <Blocked />;
@@ -141,7 +150,7 @@ export default function RootLayout() {
             <AuthProvider>
               <SelectedMemberProvider>
                 <ToastProvider>
-                  <StatusBar style="dark" />
+                  <StatusBar style="auto" />
                   <Gate />
                 </ToastProvider>
               </SelectedMemberProvider>

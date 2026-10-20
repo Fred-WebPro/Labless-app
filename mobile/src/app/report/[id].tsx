@@ -100,20 +100,18 @@ export default function ReportScreen() {
   const share = async () => {
     const a = analysis.data;
     if (!a) return;
+    // Kept short: some messengers (Telegram among them) silently drop long text from the share sheet.
     const lines = [
       `${t.report.shareHeader} · ${member?.name ?? ""} · ${formatDate(report.data?.collected_at ?? report.data?.created_at, locale)}`,
       "",
       a.summary ?? "",
       "",
-      ...a.findings.map((f, i) => `${i + 1}. ${f.title}: ${f.detail}`),
+      ...a.findings.slice(0, 4).map((f, i) => `${i + 1}. ${f.title}`),
       "",
       `${t.report.nextSteps}:`,
-      ...a.next_steps.map((s) => `• ${s.title}`),
+      ...a.next_steps.slice(0, 3).map((s) => `• ${s.title}`),
       "",
-      `${t.report.doctor}:`,
-      ...a.doctor_questions.map((q) => `• ${q}`),
-      "",
-      t.common.notDiagnosis,
+      "Labless · labless.dilami.pro",
     ];
     try {
       await Share.share({ message: lines.join("\n") });
@@ -157,7 +155,7 @@ export default function ReportScreen() {
       subtitle={formatDate(r.collected_at ?? r.created_at, locale)}
       right={
         <View style={{ flexDirection: "row" }}>
-          {ready && a ? <IconButton icon="share" label={t.report.share} onPress={share} /> : null}
+          {ready && a ? <IconButton icon="share" label={t.report.pdf} onPress={doctorPdf} /> : null}
           {!processing ? <IconButton icon="trash-2" label={t.common.delete} onPress={remove} /> : null}
         </View>
       }
@@ -218,7 +216,7 @@ export default function ReportScreen() {
       <Screen>
         <View style={{ gap: 12, marginTop: 6 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            {member ? <Avatar name={member.name} color={member.color} size={30} /> : null}
+            {member ? <Avatar name={member.name} color={member.color} size={30} photo={member.photo_url} /> : null}
             {a.status ? <StatusBadge status={a.status} /> : null}
             {refining || processing ? (
               <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
@@ -267,9 +265,9 @@ export default function ReportScreen() {
                 }}
                 style={[styles.tab, on && styles.tabOn]}
               >
-                <Text style={[styles.tabText, on && { color: "#fff" }]} numberOfLines={1}>
+                <Text style={[styles.tabText, on && { color: colors.onInk }]} numberOfLines={1}>
                   {x.label}
-                  {x.count ? <Text style={[styles.tabCount, on && { color: "rgba(255,255,255,0.65)" }]}> {x.count}</Text> : null}
+                  {x.count ? <Text style={[styles.tabCount, on && { color: colors.onInkMuted }]}> {x.count}</Text> : null}
                 </Text>
               </Pressable>
             );
@@ -345,7 +343,7 @@ export default function ReportScreen() {
                     }}
                     style={[styles.filter, outOnly === v && styles.tabOn]}
                   >
-                    <Text style={[styles.filterText, outOnly === v && { color: "#fff" }]}>
+                    <Text style={[styles.filterText, outOnly === v && { color: colors.onInk }]}>
                       {v ? `${t.report.outOnly} · ${results.data.filter(outOfRange).length}` : t.report.allValues}
                     </Text>
                   </Pressable>
@@ -409,7 +407,7 @@ export default function ReportScreen() {
               </>
             ) : null}
             <Button label={t.report.pdf} kind="ink" icon="file-text" loading={pdfBusy} onPress={doctorPdf} style={{ marginTop: 22 }} />
-            <Button label={t.report.share} kind="ghost" icon="share" onPress={share} style={{ marginTop: 10 }} />
+            <Button label={t.report.shareText} kind="ghost" icon="message-square" onPress={share} style={{ marginTop: 10 }} />
           </View>
         ) : null}
 
@@ -534,7 +532,7 @@ function Processing({ stage }: { stage: string | null }) {
           return (
             <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={[styles.stepDot, done && { backgroundColor: colors.ink, borderColor: colors.ink }, active && { borderColor: colors.pen }]}>
-                {done ? <Feather name="check" size={13} color="#fff" /> : active ? <ActivityIndicator size="small" color={colors.pen} /> : null}
+                {done ? <Feather name="check" size={13} color={colors.onInk} /> : active ? <ActivityIndicator size="small" color={colors.pen} /> : null}
               </View>
               <T v={active ? "bodyMedium" : "body"} style={!done && !active ? { color: colors.ink3 } : undefined}>
                 {label}
@@ -564,6 +562,6 @@ const styles = StyleSheet.create({
   filterText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.ink },
   skip: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule, gap: 4 },
   skipName: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.ink, textDecorationLine: "line-through", textDecorationColor: colors.pen },
-  loupe: { width: 96, height: 96, borderRadius: 48, borderWidth: 5, borderColor: colors.ink, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  loupe: { width: 96, height: 96, borderRadius: 48, borderWidth: 5, borderColor: colors.ink, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper },
   stepDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.ruleStrong, alignItems: "center", justifyContent: "center" },
 });

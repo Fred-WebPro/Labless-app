@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { InsightsPreview } from "@/components/Insights";
 import { StatusBadge } from "@/components/report";
 import { Avatar, Button, Card, Screen, T } from "@/components/ui";
 import { fill, formatDate, useI18n } from "@/i18n";
@@ -39,6 +40,12 @@ export default function Family() {
         </View>
       </View>
 
+      {!members.isLoading && (analyses.data?.length ?? 0) > 0 ? (
+        <View style={{ marginTop: 22 }}>
+          <InsightsPreview scope="family" title={t.insights.familyTitle} />
+        </View>
+      ) : null}
+
       {members.isLoading ? (
         <ActivityIndicator color={colors.ink} style={{ marginTop: 40 }} />
       ) : (
@@ -50,7 +57,7 @@ export default function Family() {
             const age = ageOf(m.birth_date);
             return (
               <Card key={m.id} onPress={() => router.push(`/member/${m.id}`)} style={styles.card}>
-                <Avatar name={m.name} color={m.color} size={50} />
+                <Avatar name={m.name} color={m.color} size={50} photo={m.photo_url} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <T v="h3" numberOfLines={1}>
                     {m.name}

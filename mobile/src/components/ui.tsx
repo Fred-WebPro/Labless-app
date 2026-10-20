@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { forwardRef, type ComponentProps, type ComponentRef, type ReactNode } from "react";
+import { Image } from "expo-image";
+import { forwardRef, useEffect, useState, type ComponentProps, type ComponentRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Platform,
   Pressable,
   ScrollView,
@@ -10,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  type ColorValue,
   type RefreshControlProps,
   type StyleProp,
   type TextInputProps,
@@ -18,7 +21,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useI18n } from "@/i18n";
-import { colors, fonts, radius, space } from "@/lib/theme";
+import { colors, fonts, radius, space, useHex } from "@/lib/theme";
 
 export type IconName = ComponentProps<typeof Feather>["name"];
 
@@ -92,7 +95,7 @@ export function Button({
 }) {
   const palette = {
     pen: { bg: colors.pen, fg: "#fff", border: colors.pen },
-    ink: { bg: colors.ink, fg: "#fff", border: colors.ink },
+    ink: { bg: colors.ink, fg: colors.onInk, border: colors.ink },
     ghost: { bg: "transparent", fg: colors.ink, border: colors.ruleStrong },
     soft: { bg: colors.paper2, fg: colors.ink, border: colors.paper2 },
     danger: { bg: "transparent", fg: colors.pen, border: colors.penSoft },
@@ -141,7 +144,7 @@ export function IconButton({
   icon: IconName;
   onPress: () => void;
   label: string;
-  color?: string;
+  color?: ColorValue;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
@@ -160,7 +163,7 @@ export function IconButton({
   );
 }
 
-export function LinkButton({ label, onPress, color = colors.ink }: { label: string; onPress: () => void; color?: string }) {
+export function LinkButton({ label, onPress, color = colors.ink }: { label: string; onPress: () => void; color?: ColorValue }) {
   return (
     <Pressable accessibilityRole="link" hitSlop={8} onPress={onPress}>
       {({ pressed }) => (
@@ -217,7 +220,7 @@ export function Choice<V extends string>({
             }}
             style={[styles.choice, !wrap && { flex: 1 }, on && styles.choiceOn]}
           >
-            <Text style={[variants.smallMedium, { color: on ? "#fff" : colors.ink, textAlign: "center" }]} numberOfLines={1}>
+            <Text style={[variants.smallMedium, { color: on ? colors.onInk : colors.ink, textAlign: "center" }]} numberOfLines={1}>
               {o.label}
             </Text>
           </Pressable>
@@ -243,7 +246,7 @@ export function Screen({
   refresh?: React.ReactElement<RefreshControlProps>;
   padded?: boolean;
   footer?: ReactNode;
-  background?: string;
+  background?: ColorValue;
   contentStyle?: StyleProp<ViewStyle>;
 }) {
   const insets = useSafeAreaInsets();
@@ -318,7 +321,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
   );
 }
 
-export function Pill({ label, fg = colors.ink2, bg = colors.paper2, icon }: { label: string; fg?: string; bg?: string; icon?: IconName }) {
+export function Pill({ label, fg = colors.ink2, bg = colors.paper2, icon }: { label: string; fg?: ColorValue; bg?: ColorValue; icon?: IconName }) {
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       {icon ? <Feather name={icon} size={12} color={fg} /> : null}
@@ -329,12 +332,60 @@ export function Pill({ label, fg = colors.ink2, bg = colors.paper2, icon }: { la
   );
 }
 
-export function Avatar({ name, color, size = 44 }: { name: string; color: string; size?: number }) {
+export function Avatar({ name, color, size = 44, photo }: { name: string; color: string; size?: number; photo?: string | null }) {
   const initial = (name.trim()[0] ?? "?").toUpperCase();
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
       <Text style={{ fontFamily: fonts.semibold, fontSize: size * 0.42, color: "#fff" }}>{initial}</Text>
+      {photo ? <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} accessibilityIgnoresInvertColors /> : null}
     </View>
+  );
+}
+
+/** On/off switch drawn in the Labless style, the same size on every iOS version. */
+export function Toggle({ value, onChange, label, disabled }: { value: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  const hex = useHex();
+  const [x] = useState(() => new Animated.Value(value ? 1 : 0));
+  useEffect(() => {
+    Animated.timing(x, { toValue: value ? 1 : 0, duration: 180, useNativeDriver: false }).start();
+  }, [value, x]);
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
+      hitSlop={10}
+      onPress={() => {
+        tap();
+        onChange(!value);
+      }}
+      style={{ opacity: disabled ? 0.5 : 1 }}
+    >
+      <Animated.View
+        style={{
+          width: 50,
+          height: 30,
+          borderRadius: 15,
+          padding: 3,
+          backgroundColor: x.interpolate({ inputRange: [0, 1], outputRange: [hex.ruleStrong, hex.ink] }),
+        }}
+      >
+        <Animated.View
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: x.interpolate({ inputRange: [0, 1], outputRange: [hex.paper, hex.paper] }),
+            transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }],
+            shadowColor: "#000",
+            shadowOpacity: 0.18,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
+          }}
+        />
+      </Animated.View>
+    </Pressable>
   );
 }
 

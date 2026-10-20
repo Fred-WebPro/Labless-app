@@ -251,7 +251,7 @@ export function Checkin({
                     }}
                     style={[styles.option, on && styles.optionOn]}
                   >
-                    <Text style={[styles.optionText, on && { color: "#fff" }]}>{o}</Text>
+                    <Text style={[styles.optionText, on && { color: colors.onInk }]}>{o}</Text>
                   </Pressable>
                 );
               })}
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 18,
     borderRadius: radius.lg,
-    backgroundColor: "#FFF8F6",
+    backgroundColor: colors.penTint,
     borderWidth: 1,
     borderColor: colors.penSoft,
   },

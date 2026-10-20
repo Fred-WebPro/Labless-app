@@ -79,7 +79,7 @@ export default function MemberScreen() {
       />
       <Screen>
         <View style={styles.head}>
-          <Avatar name={member.name} color={member.color} size={72} />
+          <Avatar name={member.name} color={member.color} size={72} photo={member.photo_url} />
           <View style={{ flex: 1, gap: 4 }}>
             <T v="title" numberOfLines={2}>
               {member.name}
@@ -119,7 +119,7 @@ export default function MemberScreen() {
                   }}
                   style={[styles.filter, on && styles.filterOn]}
                 >
-                  <Text style={[styles.filterText, on && { color: "#fff" }]}>
+                  <Text style={[styles.filterText, on && { color: colors.onInk }]}>
                     {t.member.filters[f]} · {n}
                   </Text>
                 </Pressable>

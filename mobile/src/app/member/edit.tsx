@@ -1,13 +1,16 @@
 import { Feather } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from "react-native";
 import { DateField } from "@/components/DateField";
 import { useToast } from "@/components/Toast";
-import { Button, Choice, Field, Header, Loading, Screen, T, tap } from "@/components/ui";
+import { Avatar, Button, Choice, Field, Header, Loading, Screen, T, tap } from "@/components/ui";
 import { useI18n } from "@/i18n";
 import { track } from "@/lib/analytics";
-import { useFamily, useMember, useSaveMember } from "@/lib/data";
+import { keys, useFamily, useMember, useSaveMember } from "@/lib/data";
+import { pickPhoto, removeMemberPhoto, uploadMemberPhoto } from "@/lib/photo";
+import { PermissionError } from "@/lib/upload";
 import { useSelectedMember } from "@/lib/selected";
 import { colors, memberColors } from "@/lib/theme";
 import type { Member, Relation, Sex } from "@/lib/types";
@@ -35,6 +38,21 @@ function Form({ member }: { member?: Member }) {
   const [birthComplete, setBirthComplete] = useState(!!member?.birth_date);
   const [color, setColor] = useState(member?.color ?? memberColors[1]);
   const [errors, setErrors] = useState<{ name?: string; sex?: string; birth?: string }>({});
+  const [photo, setPhoto] = useState<string | null>(member?.photo_url ?? null);
+  const [photoChanged, setPhotoChanged] = useState(false);
+  const qc = useQueryClient();
+
+  const choosePhoto = async (source: "library" | "camera") => {
+    try {
+      const uri = await pickPhoto(source);
+      if (uri) {
+        setPhoto(uri);
+        setPhotoChanged(true);
+      }
+    } catch (e) {
+      toast(e instanceof PermissionError ? (source === "camera" ? t.upload.permissionCamera : t.upload.permissionLibrary) : t.common.genericError, "error");
+    }
+  };
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/family"));
 
@@ -51,6 +69,16 @@ function Form({ member }: { member?: Member }) {
         familyId: family.id,
         input: { name: name.trim(), relation: member?.is_self ? "self" : relation, sex, birth_date: birth, color },
       });
+      if (photoChanged) {
+        try {
+          if (photo) await uploadMemberPhoto(saved.id, photo, member?.photo_path ?? null);
+          else await removeMemberPhoto(saved.id, member?.photo_path ?? null);
+          track("member_photo", { removed: !photo });
+        } catch {
+          toast(t.memberEdit.photoFailed, "error");
+        }
+        await qc.invalidateQueries({ queryKey: keys.members });
+      }
       track(member ? "member_updated" : "member_added", { relation: saved.relation });
       if (!member) select(saved.id);
       toast(t.memberEdit.saved);
@@ -72,6 +100,32 @@ function Form({ member }: { member?: Member }) {
       />
       <Screen footer={<Button label={t.common.save} kind="ink" onPress={submit} loading={save.isPending} testID="member-save" />}>
         <View style={{ gap: 22, marginTop: 8 }}>
+          <View style={styles.photoRow}>
+            <Avatar name={name || "?"} color={color} size={84} photo={photo} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <T v="smallMedium">{t.memberEdit.photo}</T>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                <Button small kind="ghost" icon="image" label={t.memberEdit.photoLibrary} onPress={() => choosePhoto("library")} />
+                {Platform.OS !== "web" ? <Button small kind="ghost" icon="camera" label={t.memberEdit.photoCamera} onPress={() => choosePhoto("camera")} /> : null}
+              </View>
+              {photo ? (
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    tap();
+                    setPhoto(null);
+                    setPhotoChanged(true);
+                  }}
+                >
+                  <T v="small" style={{ color: colors.pen }}>
+                    {t.memberEdit.photoRemove}
+                  </T>
+                </Pressable>
+              ) : (
+                <T v="caption">{t.memberEdit.photoHint}</T>
+              )}
+            </View>
+          </View>
           <Field
             label={t.memberEdit.name}
             placeholder={t.memberEdit.namePh}
@@ -147,6 +201,7 @@ function Form({ member }: { member?: Member }) {
 }
 
 const styles = StyleSheet.create({
+  photoRow: { flexDirection: "row", gap: 16, alignItems: "center" },
   colors: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   swatch: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   swatchOn: { borderWidth: 3, borderColor: colors.paper, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },

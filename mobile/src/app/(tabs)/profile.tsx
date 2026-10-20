@@ -1,11 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Platform, StyleSheet, Switch, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { confirm } from "@/components/confirm";
 import { Wordmark } from "@/components/Pen";
 import { useToast } from "@/components/Toast";
-import { Choice, Row, Screen, T } from "@/components/ui";
+import { Choice, Row, Screen, T, Toggle } from "@/components/ui";
 import { LOCALES, fill, useI18n, type Locale } from "@/i18n";
 import { api } from "@/lib/api";
 import { appVersion, track } from "@/lib/analytics";
@@ -89,14 +89,7 @@ export default function Profile() {
           icon="bell"
           label={t.profile.notifications}
           right={
-            <Switch
-              value={profile?.notifications_enabled ?? true}
-              onValueChange={toggleNotifications}
-              trackColor={{ true: colors.ink, false: colors.ruleStrong }}
-              thumbColor="#fff"
-              {...(Platform.OS === "web" ? ({ activeThumbColor: "#fff", activeTrackColor: colors.ink } as object) : {})}
-              accessibilityLabel={t.profile.notifications}
-            />
+            <Toggle value={profile?.notifications_enabled ?? true} onChange={toggleNotifications} label={t.profile.notifications} />
           }
         />
       </View>

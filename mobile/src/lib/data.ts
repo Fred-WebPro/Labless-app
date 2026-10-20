@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useUserId } from "@/lib/auth";
+import type { Night } from "@/lib/sleep";
 import { supabase } from "@/lib/supabase";
-import type { Analysis, Family, InboxItem, Member, Profile, Report, Result } from "@/lib/types";
+import type { Analysis, Family, InboxItem, Insights, Member, Profile, Report, Result } from "@/lib/types";
 
 const must = <T,>(res: { data: T | null; error: { message: string } | null }): T => {
   if (res.error) throw new Error(res.error.message);
@@ -19,7 +21,42 @@ export const keys = {
   memberResults: (memberId: string) => ["memberResults", memberId] as const,
   analyses: ["analyses"] as const,
   inbox: ["inbox"] as const,
+  insights: (scope: "member" | "family", memberId?: string) => ["insights", scope, memberId ?? "family"] as const,
+  sleep: ["sleep"] as const,
 };
+
+export type InsightsResponse = { insights: Insights | null; reason: "no_readings" | "need_two_people" | null };
+
+/**
+ * Personal (scope "member") or family recommendations. The server regenerates them only
+ * when a newer reading exists, so this is cheap to call on every visit.
+ */
+export function useInsights(scope: "member" | "family", memberId?: string, enabled = true) {
+  const uid = useUserId();
+  return useQuery({
+    queryKey: keys.insights(scope, memberId),
+    enabled: !!uid && enabled && (scope === "family" || !!memberId),
+    staleTime: 10 * 60_000,
+    queryFn: () => api<InsightsResponse>("/api/insights", { body: { scope, memberId } }),
+  });
+}
+
+/** Nights stored from Apple Health, oldest first. */
+export function useSleepNights(enabled = true) {
+  const uid = useUserId();
+  return useQuery({
+    queryKey: keys.sleep,
+    enabled: !!uid && enabled,
+    queryFn: async () =>
+      must<Night[]>(
+        await supabase
+          .from("sleep_nights")
+          .select("night, asleep_min, in_bed_min, bedtime, wake_time, deep_min, rem_min, awake_min")
+          .order("night", { ascending: true })
+          .limit(60),
+      ),
+  });
+}
 
 export function useProfile() {
   const uid = useUserId();
@@ -51,6 +88,13 @@ export function useMembers() {
     enabled: !!uid,
     queryFn: async () => {
       const rows = must<Member[]>(await supabase.from("members").select("*").order("created_at"));
+      // Photos live in a private bucket; sign them for a week so they load without auth headers.
+      const paths = rows.map((m) => m.photo_path).filter((p): p is string => !!p);
+      if (paths.length) {
+        const { data } = await supabase.storage.from("avatars").createSignedUrls(paths, 7 * 86400);
+        const byPath = new Map((data ?? []).map((s) => [s.path, s.signedUrl]));
+        rows.forEach((m) => (m.photo_url = m.photo_path ? (byPath.get(m.photo_path) ?? null) : null));
+      }
       return [...rows].sort((a, b) => Number(b.is_self) - Number(a.is_self));
     },
   });

@@ -58,6 +58,7 @@ export function ping(locale: string) {
           device_model: Device.modelName ?? (Platform.OS === "web" ? "browser" : null),
           last_seen_at: new Date().toISOString(),
           locale,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
         })
         .eq("id", userId);
     } catch {

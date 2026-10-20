@@ -67,7 +67,7 @@ const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const LOOKUP = new Uint8Array(256);
 for (let i = 0; i < B64.length; i++) LOOKUP[B64.charCodeAt(i)] = i;
 
-function base64ToBytes(b64: string): Uint8Array {
+export function base64ToBytes(b64: string): Uint8Array {
   const clean = b64.replace(/^data:[^,]+,/, "").replace(/[^A-Za-z0-9+/]/g, "");
   const len = Math.floor((clean.length * 3) / 4);
   const out = new Uint8Array(len);

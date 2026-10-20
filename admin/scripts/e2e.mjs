@@ -148,6 +148,9 @@ try {
     console.log("      findings:", analysis?.findings?.map((f) => f.title).join(" | "));
     console.log("      hidden:", analysis?.hidden_tests?.map((h) => `${h.name}=${h.estimate}`).join(" | "));
     console.log("      questions:", analysis?.checkin_questions?.map((q) => q.question).join(" | "));
+    ok(Array.isArray(analysis?.advice) && analysis.advice.length > 0, "health advice present", String(analysis?.advice?.length));
+    ok(Array.isArray(analysis?.changes) && analysis.changes.length === 0, "no changes without earlier reports", String(analysis?.changes?.length));
+    console.log("      advice:", analysis?.advice?.map((a) => `[${a.area}] ${a.title}`).join(" | "));
     const { data: usage } = await admin.from("ai_usage").select("kind, cost_usd, speed").eq("report_id", reportId);
     const cost = (usage ?? []).reduce((s, u) => s + Number(u.cost_usd), 0);
     ok((usage ?? []).length >= 2 && cost > 0, "AI cost recorded for the report", `${usage?.length} calls, $${cost.toFixed(4)}, ${usage?.map((u) => u.speed).join("/")}`);

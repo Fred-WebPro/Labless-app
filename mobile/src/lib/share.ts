@@ -30,7 +30,9 @@ export function hasPendingShare(): boolean {
  */
 export function useSharedFiles(onFiles: (pages: Page[]) => void, onUnsupported: () => void) {
   const handlers = useRef({ onFiles, onUnsupported });
-  handlers.current = { onFiles, onUnsupported };
+  useEffect(() => {
+    handlers.current = { onFiles, onUnsupported };
+  });
 
   useEffect(() => {
     if (!receivingSupported()) return;

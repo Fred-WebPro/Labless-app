@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Sparkline } from "@/components/Chart";
 import { confirm } from "@/components/confirm";
@@ -8,10 +8,11 @@ import { useToast } from "@/components/Toast";
 import { Avatar, Button, Card, Empty, Header, IconButton, Loading, Screen, SectionTitle, T, tap } from "@/components/ui";
 import { fill, formatNumber, useI18n } from "@/i18n";
 import { track } from "@/lib/analytics";
+import { seriesByMarker } from "@/lib/compare";
 import { useAnalyses, useDeleteMember, useMember, useMemberResults, useReports } from "@/lib/data";
 import { ageOf } from "@/lib/format";
 import { useSelectedMember } from "@/lib/selected";
-import { colors, fonts } from "@/lib/theme";
+import { colors, fonts, radius } from "@/lib/theme";
 import { useRefreshOnFocus } from "@/lib/useRefreshOnFocus";
 
 export default function MemberScreen() {
@@ -30,16 +31,9 @@ export default function MemberScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []));
 
-  const trends = useMemo(() => {
-    const byMarker = new Map<string, { name: string; unit: string | null; values: number[] }>();
-    for (const r of results.data ?? []) {
-      if (r.value == null || r.marker.startsWith("other:")) continue;
-      const entry = byMarker.get(r.marker) ?? { name: r.name, unit: r.unit, values: [] };
-      entry.values.push(Number(r.value));
-      byMarker.set(r.marker, entry);
-    }
-    return [...byMarker.entries()].filter(([, v]) => v.values.length >= 2).slice(0, 20);
-  }, [results.data]);
+  const [filter, setFilter] = useState<"all" | "out" | "changed">("all");
+  const series = useMemo(() => seriesByMarker(results.data ?? []), [results.data]);
+  const shown = series.filter((s) => (filter === "out" ? s.outOfRange : filter === "changed" ? s.pct != null && Math.abs(s.pct) >= 3 : true));
 
   const back = () => (router.canGoBack() ? router.back() : router.replace("/family"));
 
@@ -105,15 +99,39 @@ export default function MemberScreen() {
           style={{ marginTop: 22 }}
         />
 
-        <SectionTitle title={t.member.trends} />
+        <SectionTitle title={t.member.tracking} />
         {results.isLoading ? (
           <ActivityIndicator color={colors.ink} />
-        ) : trends.length ? (
+        ) : series.length ? (
+          <>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+            {(["all", "out", "changed"] as const).map((f) => {
+              const on = filter === f;
+              const n = f === "all" ? series.length : f === "out" ? series.filter((s) => s.outOfRange).length : series.filter((s) => s.pct != null && Math.abs(s.pct) >= 3).length;
+              return (
+                <Pressable
+                  key={f}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => {
+                    tap();
+                    setFilter(f);
+                  }}
+                  style={[styles.filter, on && styles.filterOn]}
+                >
+                  <Text style={[styles.filterText, on && { color: "#fff" }]}>
+                    {t.member.filters[f]} · {n}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {shown.length ? (
           <Card style={{ paddingVertical: 4 }}>
-            {trends.map(([marker, v]) => {
+            {shown.map((v) => {
+              const marker = v.marker;
               const last = v.values[v.values.length - 1];
-              const prev = v.values[v.values.length - 2];
-              const delta = prev ? ((last - prev) / Math.abs(prev)) * 100 : 0;
+              const delta = v.pct ?? 0;
               return (
                 <Pressable
                   key={marker}
@@ -127,12 +145,16 @@ export default function MemberScreen() {
                     <T v="smallMedium" numberOfLines={1}>
                       {v.name}
                     </T>
-                    <Text style={[styles.delta, { color: Math.abs(delta) < 5 ? colors.ink3 : delta > 0 ? colors.pen : colors.good }]}>
-                      {delta > 0 ? "↑" : delta < 0 ? "↓" : "→"} {Math.abs(Math.round(delta))}%
-                    </Text>
+                    {v.pct == null ? (
+                      <Text style={[styles.delta, { color: colors.ink3 }]}>{t.member.oneValue}</Text>
+                    ) : (
+                      <Text style={[styles.delta, { color: Math.abs(delta) < 3 ? colors.ink3 : colors.ink2 }]}>
+                        {delta > 0 ? "↑" : delta < 0 ? "↓" : "→"} {Math.abs(Math.round(delta))}%
+                      </Text>
+                    )}
                   </View>
-                  <Sparkline points={v.values} />
-                  <Text style={styles.value}>
+                  {v.values.length > 1 ? <Sparkline points={v.values} /> : null}
+                  <Text style={[styles.value, v.outOfRange && { color: colors.pen }]}>
                     {formatNumber(last, locale)}
                     {v.unit ? <Text style={styles.unit}> {v.unit}</Text> : null}
                   </Text>
@@ -140,6 +162,10 @@ export default function MemberScreen() {
               );
             })}
           </Card>
+          ) : (
+            <T v="small">{t.member.trackingEmpty}</T>
+          )}
+          </>
         ) : (
           <T v="small">{t.member.trendsEmpty}</T>
         )}
@@ -167,6 +193,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.rule,
   },
+  filter: { paddingHorizontal: 14, height: 36, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.ruleStrong, justifyContent: "center" },
+  filterOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  filterText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.ink },
   delta: { fontFamily: fonts.medium, fontSize: 12.5 },
   value: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink, minWidth: 70, textAlign: "right" },
   unit: { fontFamily: fonts.regular, fontSize: 11, color: colors.ink3 },

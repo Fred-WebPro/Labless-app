@@ -70,6 +70,9 @@ export type IndexResult = {
 };
 export type NextStep = { title: string; detail: string; kind: "test" | "lifestyle" | "doctor" | "recheck"; priority: "high" | "medium" | "low" };
 export type CheckinQuestion = { id: string; question: string; why: string; kind: "yes_no" | "choice"; options: string[] };
+export type AdviceArea = "nutrition" | "activity" | "sleep" | "stress" | "habits" | "supplements";
+export type Advice = { area: AdviceArea; title: string; detail: string };
+export type Change = { marker: string; direction: "better" | "worse" | "stable"; note: string };
 
 export type Analysis = {
   report_id: string;
@@ -85,6 +88,8 @@ export type Analysis = {
   checkin_questions: CheckinQuestion[];
   checkin_answers: Record<string, string>;
   red_flags: string[];
+  advice?: Advice[];
+  changes?: Change[];
   updated_at: string;
 };
 

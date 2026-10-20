@@ -2,6 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { HIDDEN_TEST_IDS, MARKER_KEYS, MARKERS } from "@/lib/analysis/markers";
 import type { IndexResult } from "@/lib/analysis/indices";
 
+/** Reading values off the page: accurate and inexpensive. */
+export const EXTRACT_MODEL = "claude-sonnet-5-5";
+/** Medical reasoning over the values: the part where quality matters most. */
 export const MODEL = "claude-opus-5-5";
 
 let client: Anthropic | null = null;
@@ -63,27 +66,17 @@ function usageOf(response: Anthropic.Beta.BetaMessage, speed: "fast" | "standard
 }
 
 /**
- * Runs a request in fast mode (higher output speed) and falls back to standard speed
- * when fast mode is rate limited or not available for this request.
+ * Standard-speed request with server-side refusal fallback. Fast mode is not used:
+ * it doubles the price for roughly twice the output speed.
  */
 async function create(params: Omit<CreateParams, "betas" | "fallbacks">): Promise<{ response: Anthropic.Beta.BetaMessage; usage: Usage }> {
-  const base = { ...params, fallbacks: "default" as const };
   const started = Date.now();
-  try {
-    const response = await anthropic().beta.messages.create({
-      ...base,
-      betas: ["server-side-fallback-2026-07-01", "fast-mode-2026-02-01"],
-      speed: "fast",
-    } as CreateParams);
-    return { response, usage: usageOf(response, "fast", started) };
-  } catch (err) {
-    if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.BadRequestError) {
-      console.warn("fast mode unavailable, using standard speed:", err.message);
-      const response = await anthropic().beta.messages.create({ ...base, betas: ["server-side-fallback-2026-07-01"] } as CreateParams);
-      return { response, usage: usageOf(response, "standard", started) };
-    }
-    throw err;
-  }
+  const response = await anthropic().beta.messages.create({
+    ...params,
+    fallbacks: "default",
+    betas: ["server-side-fallback-2026-07-01"],
+  } as CreateParams);
+  return { response, usage: usageOf(response, "standard", started) };
 }
 
 const nullable = (type: "string" | "number" | "integer" | "boolean") => ({ type: [type, "null"] });
@@ -183,7 +176,7 @@ export async function extractReport(files: FileInput[], locale: string, onUsage?
   content.push({ type: "text", text: `Extract every test result from this laboratory report. Write display_name in ${LANG[locale] ?? "English"}.` });
 
   const { response, usage } = await create({
-    model: MODEL,
+    model: EXTRACT_MODEL,
     max_tokens: 16000,
     system: EXTRACTION_SYSTEM,
     output_config: { effort: "low", format: { type: "json_schema", schema: EXTRACTION_SCHEMA as unknown as Record<string, unknown> } },
@@ -213,6 +206,8 @@ export type HiddenTest = {
 export type NextStep = { title: string; detail: string; kind: "test" | "lifestyle" | "doctor" | "recheck"; priority: "high" | "medium" | "low" };
 export type SkipTest = { name: string; reason: string };
 export type CheckinQuestion = { id: string; question: string; why: string; kind: "yes_no" | "choice"; options: string[] };
+export type Advice = { area: "nutrition" | "activity" | "sleep" | "stress" | "habits" | "supplements"; title: string; detail: string };
+export type Change = { marker: string; direction: "better" | "worse" | "stable"; note: string };
 
 export type Interpretation = {
   status: "good" | "watch" | "attention" | "urgent";
@@ -224,12 +219,14 @@ export type Interpretation = {
   doctor_questions: string[];
   checkin_questions: CheckinQuestion[];
   red_flags: string[];
+  advice: Advice[];
+  changes: Change[];
 };
 
 const INTERPRETATION_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["status", "summary", "findings", "hidden_tests", "next_steps", "skip_tests", "doctor_questions", "checkin_questions", "red_flags"],
+  required: ["status", "summary", "findings", "hidden_tests", "next_steps", "skip_tests", "doctor_questions", "checkin_questions", "red_flags", "advice", "changes"],
   properties: {
     status: { type: "string", enum: ["good", "watch", "attention", "urgent"] },
     summary: { type: "string" },
@@ -304,6 +301,32 @@ const INTERPRETATION_SCHEMA = {
       },
     },
     red_flags: { type: "array", items: { type: "string" } },
+    advice: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["area", "title", "detail"],
+        properties: {
+          area: { type: "string", enum: ["nutrition", "activity", "sleep", "stress", "habits", "supplements"] },
+          title: { type: "string" },
+          detail: { type: "string" },
+        },
+      },
+    },
+    changes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["marker", "direction", "note"],
+        properties: {
+          marker: { type: "string" },
+          direction: { type: "string", enum: ["better", "worse", "stable"] },
+          note: { type: "string" },
+        },
+      },
+    },
   },
 } as const;
 
@@ -323,7 +346,11 @@ How to reason:
 7. Check-in questions: 0–6 short questions whose answers would change the interpretation (smoking, snoring or daytime sleepiness, heartburn medication, fasting status, family history of diabetes or early heart disease, alcohol, diet, symptoms). Ask only questions this report raises; do not repeat questions that already have answers. Use stable snake_case ids. Options for yes_no are the localized "Yes" and "No".
 8. Red flags: values that need prompt medical attention (critical flags, potassium > 6.0 or < 3.0 mmol/L, hemoglobin < 8 g/dL, platelets < 50, glucose > 300 mg/dL, sodium < 125, eGFR < 30, and similar). Say what to do. Empty when there are none. If any exist, status is "urgent".
 9. Status: "good" when nothing needs action, "watch" for minor things to keep an eye on, "attention" when a finding deserves a doctor visit or a test soon, "urgent" only for red flags.
-10. Findings: 3–8 items, most important first, each with the markers it relies on. Include reassuring findings ("good") when meaningful, so the person knows what is fine.
+10. Findings: 3–6 items, most important first, each with the markers it relies on. Include reassuring findings ("good") when meaningful, so the person knows what is fine.
+11. Advice: 3–5 practical, specific health tips tied to these results (nutrition, activity, sleep, stress, habits, or supplements to discuss with a doctor). Each says what to do and why, for example "Walk 10–15 minutes after dinner: it lowers the after-meal glucose rise that drives insulin resistance". No generic wellness filler.
+12. Changes: when earlier results exist, up to 5 of the most meaningful changes since the previous report (marker name, better/worse/stable, one short sentence with both values). Empty when there are no earlier results.
+
+Length: keep it tight. Summary 2–3 sentences. Each detail, explanation and reason 1–2 sentences. At most 8 hidden tests, 5 next steps, 5 doctor questions, 5 check-in questions. Skip anything that adds no new information.
 
 Writing: plain words, short sentences, no jargon without a one-line explanation, no fear-mongering, no exclamation marks. Numbers keep their units. Never claim certainty you don't have. Never tell the person to stop or change medication. Write everything in the requested language.`;
 
@@ -352,7 +379,7 @@ export async function interpret(input: InterpretInput, onUsage?: UsageSink): Pro
     model: MODEL,
     max_tokens: 16000,
     system: INTERPRETATION_SYSTEM,
-    output_config: { effort: "medium", format: { type: "json_schema", schema: INTERPRETATION_SCHEMA as unknown as Record<string, unknown> } },
+    output_config: { effort: "low", format: { type: "json_schema", schema: INTERPRETATION_SCHEMA as unknown as Record<string, unknown> } },
     messages: [
       {
         role: "user",

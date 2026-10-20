@@ -136,7 +136,10 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
         flag: r.flag,
       })),
       indices,
-      history: (history ?? []).map((h) => ({ marker: h.marker, date: h.collected_at, value: Number(h.value) })),
+      // Only earlier draws count as history; a report uploaded later for an older date is not "previous".
+      history: (history ?? [])
+        .filter((h) => !collectedAt || !h.collected_at || h.collected_at <= collectedAt)
+        .map((h) => ({ marker: h.marker, date: h.collected_at, value: Number(h.value) })),
       answers,
     }, logUsage);
 
@@ -160,6 +163,8 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
       checkin_questions: questions,
       checkin_answers: existing?.checkin_answers ?? {},
       red_flags: result.red_flags,
+      advice: result.advice,
+      changes: result.changes,
       locale,
       model: MODEL,
     });

@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PenUnderline } from "@/components/Pen";
 import { ReportItem } from "@/components/ReportItem";
-import { StatusBadge } from "@/components/report";
+import { AdviceCard, StatusBadge } from "@/components/report";
 import { Avatar, Button, Card, Empty, Screen, SectionTitle, T, tap } from "@/components/ui";
 import { fill, formatDate, useI18n } from "@/i18n";
 import { useAnalyses, useMembers, useProfile, useReports } from "@/lib/data";
@@ -31,6 +31,10 @@ export default function Home() {
   const list = reports.data ?? [];
   const latest = list[0];
   const latestAnalysis = analyses.data?.find((a) => a.report_id === latest?.id);
+  // The newest reading that has advice; a different tip each day.
+  const tipSource = analyses.data?.find((a) => a.member_id === selected?.id && a.advice?.length);
+  const [day] = useState(() => Math.floor(Date.now() / 86_400_000));
+  const tip = tipSource?.advice?.[day % tipSource.advice.length];
   const firstName = (profile?.full_name || members?.find((m) => m.is_self)?.name || "").split(" ")[0];
 
   const refresh = async () => {
@@ -134,6 +138,15 @@ export default function Home() {
               <ActivityIndicator color={colors.ink} />
             )}
           </Card>
+
+          {tip && tipSource ? (
+            <>
+              <SectionTitle title={t.home.tip} />
+              <Card onPress={() => router.push(`/report/${tipSource.report_id}`)} style={{ paddingVertical: 2 }}>
+                <AdviceCard advice={tip} />
+              </Card>
+            </>
+          ) : null}
 
           <SectionTitle
             title={t.home.reports}

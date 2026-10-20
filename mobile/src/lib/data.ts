@@ -106,7 +106,7 @@ export function useAnalyses() {
       must<Analysis[]>(
         (await supabase
           .from("analyses")
-          .select("report_id, member_id, status, summary, findings, hidden_tests, next_steps, red_flags, updated_at")
+          .select("report_id, member_id, status, summary, findings, hidden_tests, next_steps, red_flags, advice, updated_at")
           .order("updated_at", { ascending: false })
           .limit(100)) as unknown as { data: Analysis[] | null; error: { message: string } | null },
       ),
@@ -121,15 +121,16 @@ export function useResults(reportId: string, enabled = true) {
   });
 }
 
-export function useMemberResults(memberId: string) {
+export function useMemberResults(memberId: string | undefined, enabled = true) {
   return useQuery({
-    queryKey: keys.memberResults(memberId),
+    queryKey: keys.memberResults(memberId ?? ""),
+    enabled: enabled && !!memberId,
     queryFn: async () =>
       must<Result[]>(
         await supabase
           .from("results")
           .select("*")
-          .eq("member_id", memberId)
+          .eq("member_id", memberId!)
           .not("value", "is", null)
           .order("collected_at", { ascending: true })
           .limit(2000),

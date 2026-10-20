@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Pill, T, tap } from "@/components/ui";
 import { fill, useI18n, formatNumber } from "@/i18n";
 import { colors, fonts, radius, severity } from "@/lib/theme";
-import type { Analysis, CheckinQuestion, Finding, HiddenTest, IndexResult, NextStep, Result } from "@/lib/types";
+import type { Delta } from "@/lib/compare";
+import type { Advice, AdviceArea, Analysis, CheckinQuestion, Finding, HiddenTest, IndexResult, NextStep, Result } from "@/lib/types";
 
 export function StatusBadge({ status }: { status: NonNullable<Analysis["status"]> }) {
   const { t } = useI18n();
@@ -270,7 +271,76 @@ export function Checkin({
   );
 }
 
+const areaIcon: Record<AdviceArea, React.ComponentProps<typeof Feather>["name"]> = {
+  nutrition: "coffee",
+  activity: "activity",
+  sleep: "moon",
+  stress: "wind",
+  habits: "repeat",
+  supplements: "plus-circle",
+};
+
+export function AdviceCard({ advice }: { advice: Advice }) {
+  const { t } = useI18n();
+  return (
+    <View style={styles.advice}>
+      <View style={styles.adviceIcon}>
+        <Feather name={areaIcon[advice.area] ?? "check"} size={17} color={colors.pen} />
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        <T v="caption">{t.report.area[advice.area] ?? advice.area}</T>
+        <T v="bodyMedium">{advice.title}</T>
+        <T v="small">{advice.detail}</T>
+      </View>
+    </View>
+  );
+}
+
+export const directionColor = (d: Delta["direction"]) => (d === "worse" ? colors.pen : d === "better" ? colors.good : colors.ink3);
+
+export function DeltaRow({ delta, onPress }: { delta: Delta; onPress?: () => void }) {
+  const { t, locale } = useI18n();
+  const color = directionColor(delta.direction);
+  const arrow = delta.pct > 0 ? "↑" : delta.pct < 0 ? "↓" : "→";
+  return (
+    <Pressable
+      disabled={!onPress}
+      onPress={() => {
+        tap();
+        onPress?.();
+      }}
+      style={({ pressed }) => [styles.resultRow, pressed && onPress && { backgroundColor: colors.paper2 }]}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="smallMedium" numberOfLines={2}>
+          {delta.name}
+        </T>
+        <Text style={[styles.indexStatus, { color }]}>
+          {t.report.dir[delta.direction]} · {arrow} {Math.abs(Math.round(delta.pct))}%
+        </Text>
+      </View>
+      <View style={{ alignItems: "flex-end", minWidth: 110 }}>
+        <Text style={styles.resultValue}>
+          <Text style={styles.prevValue}>{formatNumber(delta.prev, locale)} → </Text>
+          <Text style={delta.outOfRange ? { color: colors.pen } : undefined}>{formatNumber(delta.now, locale)}</Text>
+          {delta.unit ? <Text style={styles.indexUnit}> {delta.unit}</Text> : null}
+        </Text>
+      </View>
+      {onPress ? <Feather name="chevron-right" size={16} color={colors.ink3} /> : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  advice: {
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.rule,
+  },
+  adviceIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.penSoft, alignItems: "center", justifyContent: "center" },
+  prevValue: { fontFamily: fonts.regular, fontSize: 14, color: colors.ink3 },
   finding: {
     flexDirection: "row",
     gap: 12,

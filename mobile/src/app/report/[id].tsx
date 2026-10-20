@@ -5,17 +5,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { confirm } from "@/components/confirm";
 import { PenUnderline } from "@/components/Pen";
-import { Checkin, FindingCard, HiddenTestCard, IndexRow, ResultRow, StatusBadge, StepCard } from "@/components/report";
+import { AdviceCard, Checkin, DeltaRow, FindingCard, HiddenTestCard, IndexRow, ResultRow, StatusBadge, StepCard, directionColor } from "@/components/report";
 import { useToast } from "@/components/Toast";
 import { Avatar, Button, Card, Empty, Header, IconButton, Loading, Screen, SectionTitle, T, tap } from "@/components/ui";
 import { fill, formatDate, useI18n } from "@/i18n";
 import { api } from "@/lib/api";
 import { track } from "@/lib/analytics";
-import { keys, useAnalysis, useDeleteReport, useMember, useReport, useResults } from "@/lib/data";
+import { compareWithPrevious, outOfRange } from "@/lib/compare";
+import { keys, useAnalysis, useDeleteReport, useMember, useMemberResults, useReport, useResults } from "@/lib/data";
+import { shareDoctorPdf } from "@/lib/doctorPdf";
+import { cancelReminder, getReminder, remindersSupported, setReminder } from "@/lib/reminders";
 import { restartAnalysis } from "@/lib/upload";
 import { colors, fonts, radius } from "@/lib/theme";
 
-type Tab = "findings" | "hidden" | "values" | "plan";
+type Tab = "findings" | "changes" | "hidden" | "values" | "plan";
 const STAGES = ["queued", "reading", "calculating", "interpreting"] as const;
 
 export default function ReportScreen() {
@@ -31,7 +34,14 @@ export default function ReportScreen() {
   const del = useDeleteReport();
   const [tab, setTab] = useState<Tab>("findings");
   const [refining, setRefining] = useState(false);
+  const [outOnly, setOutOnly] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const wasProcessing = useRef(false);
+  const history = useMemberResults(report.data?.member_id, ready);
+  const deltas = useMemo(
+    () => (results.data && history.data ? compareWithPrevious(results.data, history.data, id) : []),
+    [results.data, history.data, id],
+  );
 
   // When processing finishes, pull the fresh reading.
   useEffect(() => {
@@ -113,6 +123,19 @@ export default function ReportScreen() {
     }
   };
 
+  const doctorPdf = async () => {
+    if (!report.data || !analysis.data) return;
+    setPdfBusy(true);
+    try {
+      await shareDoctorPdf({ t, locale, member, report: report.data, analysis: analysis.data, results: results.data ?? [], deltas });
+      track("doctor_pdf", { report_id: id });
+    } catch {
+      toast(t.common.genericError, "error");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   if (report.isLoading) return <Loading />;
   if (!report.data) {
     return (
@@ -183,6 +206,7 @@ export default function ReportScreen() {
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "findings", label: t.report.tabs.findings, count: a.findings.length },
+    ...(deltas.length || a.changes?.length ? [{ key: "changes" as const, label: t.report.tabs.changes, count: deltas.filter((d) => d.direction === "better" || d.direction === "worse").length || undefined }] : []),
     { key: "hidden", label: t.report.tabs.hidden, count: a.hidden_tests.length },
     { key: "values", label: t.report.tabs.values, count: results.data?.length },
     { key: "plan", label: t.report.tabs.plan, count: a.next_steps.length },
@@ -270,6 +294,35 @@ export default function ReportScreen() {
           </View>
         ) : null}
 
+        {tab === "changes" ? (
+          <View>
+            {a.changes?.length ? (
+              <Card style={{ gap: 12, marginBottom: 6 }}>
+                <T v="caption">{t.report.changesAi}</T>
+                {a.changes.map((c, i) => (
+                  <View key={i} style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+                    <View style={[styles.changeDot, { backgroundColor: directionColor(c.direction === "stable" ? "stable" : c.direction) }]} />
+                    <T v="small" style={{ flex: 1, color: colors.ink }}>
+                      <Text style={{ fontFamily: fonts.medium }}>{c.marker}. </Text>
+                      {c.note}
+                    </T>
+                  </View>
+                ))}
+              </Card>
+            ) : null}
+            {deltas.length ? (
+              <>
+                <SectionTitle title={fill(t.report.changesSince, { date: formatDate(deltas[0].prevDate, locale) })} />
+                {deltas.map((d) => (
+                  <DeltaRow key={d.marker} delta={d} onPress={() => router.push({ pathname: "/marker", params: { memberId: r.member_id, marker: d.marker, name: d.name } })} />
+                ))}
+              </>
+            ) : (
+              <T v="small">{t.report.changesEmpty}</T>
+            )}
+          </View>
+        ) : null}
+
         {tab === "hidden" ? (
           <View style={{ gap: 12 }}>
             {a.hidden_tests.length ? a.hidden_tests.map((h, i) => <HiddenTestCard key={`${h.id}-${i}`} test={h} />) : <Empty icon="eye-off" title={t.report.noHidden} />}
@@ -279,7 +332,27 @@ export default function ReportScreen() {
         {tab === "values" ? (
           <View>
             {results.isLoading ? <ActivityIndicator color={colors.ink} /> : null}
-            {results.data?.map((res) => (
+            {results.data?.some(outOfRange) ? (
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
+                {[false, true].map((v) => (
+                  <Pressable
+                    key={String(v)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: outOnly === v }}
+                    onPress={() => {
+                      tap();
+                      setOutOnly(v);
+                    }}
+                    style={[styles.filter, outOnly === v && styles.tabOn]}
+                  >
+                    <Text style={[styles.filterText, outOnly === v && { color: "#fff" }]}>
+                      {v ? `${t.report.outOnly} · ${results.data.filter(outOfRange).length}` : t.report.allValues}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            {results.data?.filter((res) => !outOnly || outOfRange(res)).map((res) => (
               <ResultRow
                 key={res.id}
                 result={res}
@@ -300,6 +373,15 @@ export default function ReportScreen() {
             {a.next_steps.map((s, i) => (
               <StepCard key={i} step={s} index={i} />
             ))}
+            {a.advice?.length ? (
+              <>
+                <SectionTitle title={t.report.advice} />
+                {a.advice.map((x, i) => (
+                  <AdviceCard key={i} advice={x} />
+                ))}
+              </>
+            ) : null}
+            {remindersSupported ? <RecheckReminder memberId={r.member_id} name={member?.name ?? ""} /> : null}
             {a.skip_tests?.length ? (
               <>
                 <SectionTitle title={t.report.skip} />
@@ -326,7 +408,8 @@ export default function ReportScreen() {
                 </Card>
               </>
             ) : null}
-            <Button label={t.report.share} kind="ghost" icon="share" onPress={share} style={{ marginTop: 22 }} />
+            <Button label={t.report.pdf} kind="ink" icon="file-text" loading={pdfBusy} onPress={doctorPdf} style={{ marginTop: 22 }} />
+            <Button label={t.report.share} kind="ghost" icon="share" onPress={share} style={{ marginTop: 10 }} />
           </View>
         ) : null}
 
@@ -338,6 +421,80 @@ export default function ReportScreen() {
         </T>
       </Screen>
     </View>
+  );
+}
+
+function RecheckReminder({ memberId, name }: { memberId: string; name: string }) {
+  const { t, locale } = useI18n();
+  const toast = useToast();
+  const [due, setDue] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getReminder(memberId).then((d) => alive && setDue(d));
+    return () => {
+      alive = false;
+    };
+  }, [memberId]);
+
+  const pick = async (months: number) => {
+    setBusy(true);
+    try {
+      const d = await setReminder(memberId, months, { title: t.report.reminderPush.title, body: fill(t.report.reminderPush.body, { name: name.split(" ")[0] }) });
+      if (d) setDue(d);
+      else toast(t.report.reminderDenied, "error");
+    } catch {
+      toast(t.common.genericError, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancel = async () => {
+    setBusy(true);
+    try {
+      await cancelReminder(memberId);
+      setDue(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const options = [
+    { months: 3, label: t.report.reminderMonths.m3 },
+    { months: 6, label: t.report.reminderMonths.m6 },
+    { months: 12, label: t.report.reminderMonths.m12 },
+  ];
+
+  return (
+    <Card style={{ gap: 10, marginTop: 22 }}>
+      <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+        <Feather name="bell" size={18} color={colors.pen} />
+        <T v="h3" style={{ flex: 1 }}>
+          {t.report.reminderTitle}
+        </T>
+      </View>
+      {due ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <T v="bodyMedium" style={{ flex: 1 }}>
+            {fill(t.report.reminderSet, { date: formatDate(due, locale) })}
+          </T>
+          <Button label={t.report.reminderCancel} kind="ghost" small disabled={busy} onPress={cancel} />
+        </View>
+      ) : (
+        <>
+          <T v="small">{t.report.reminderBody}</T>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            {options.map((o) => (
+              <Pressable key={o.months} disabled={busy} onPress={() => { tap(); pick(o.months); }} style={({ pressed }) => [styles.filter, pressed && { backgroundColor: colors.paper2 }]}>
+                <Text style={styles.filterText}>{o.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
+    </Card>
   );
 }
 
@@ -402,6 +559,9 @@ const styles = StyleSheet.create({
   tabOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   tabText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },
   tabCount: { fontFamily: fonts.regular, color: colors.ink3 },
+  changeDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
+  filter: { paddingHorizontal: 14, height: 36, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.ruleStrong, justifyContent: "center" },
+  filterText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.ink },
   skip: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule, gap: 4 },
   skipName: { fontFamily: fonts.medium, fontSize: 15.5, color: colors.ink, textDecorationLine: "line-through", textDecorationColor: colors.pen },
   loupe: { width: 96, height: 96, borderRadius: 48, borderWidth: 5, borderColor: colors.ink, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },

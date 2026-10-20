@@ -1,0 +1,433 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Labless App Store screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Caveat:wght@600;700&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fff; --paper2: #F6F6F3; --rule: #E6E6E1; --ruleS: #CFCFC8;
+    --ink: #121212; --ink2: #4F4F49; --ink3: #8A8A82;
+    --pen: #D2261C; --penSoft: #FBE9E6; --good: #1F7A4D; --goodSoft: #E6F3EC; --warn: #9A6400; --warnSoft: #FBF1DC;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #d9d9d4; font-family: Onest, sans-serif; -webkit-font-smoothing: antialiased; }
+  body.single { background: #fff; overflow: hidden; }
+  .gallery { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; }
+  .gallery .slot { width: calc(1320px * var(--g)); height: calc(2868px * var(--g)); position: relative; }
+  .gallery .slot .card { transform: scale(var(--g)); transform-origin: 0 0; position: absolute; }
+
+  /* ---------- Card ---------- */
+  .card { width: 1320px; height: 2868px; position: relative; overflow: hidden; background: #fff; color: var(--ink); }
+  .card.ink { background: #121212; color: #fff; }
+  .card.pen { background: #D2261C; color: #fff; }
+  .lines { position: absolute; inset: 0; background-image: linear-gradient(var(--rule) 2px, transparent 2px); background-size: 100% 72px; background-position: 0 40px;
+    -webkit-mask-image: linear-gradient(#000, #000 55%, transparent 80%); }
+  .ink .lines { background-image: linear-gradient(rgba(255,255,255,.07) 2px, transparent 2px); }
+  .pen .lines { background-image: linear-gradient(rgba(255,255,255,.13) 2px, transparent 2px); }
+  .margin { position: absolute; top: 0; bottom: 0; left: 64px; width: 3px; background: rgba(210,38,28,.28); }
+  .ink .margin { background: rgba(255,90,78,.35); }
+  .pen .margin { background: rgba(255,255,255,.3); }
+
+  .top { position: absolute; left: 116px; right: 100px; top: 150px; z-index: 3; }
+  .kicker { font: 500 34px/1 'JetBrains Mono', monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--pen); display: flex; align-items: center; gap: 20px; }
+  .kicker i { width: 20px; height: 20px; border-radius: 50%; background: currentColor; flex: none; }
+  .ink .kicker { color: #FF5A4E; } .pen .kicker { color: #fff; }
+  h1 { font-weight: 800; font-size: 132px; line-height: 1.02; letter-spacing: -.048em; margin-top: 48px; }
+  h1 .m { position: relative; display: inline-block; white-space: nowrap; z-index: 1; }
+  h1 .m.circle { padding: 0 .06em; margin: 0 -.06em; }
+  .ink h1 .m, .pen h1 .m { color: inherit; }
+  .hand { font: 700 86px/1.02 Caveat, cursive; color: var(--pen); margin-top: 40px; transform: rotate(-2deg); transform-origin: 0 50%; }
+  .ink .hand { color: #FF5A4E; } .pen .hand { color: #fff; }
+
+  /* ---------- Phone ---------- */
+  .phone { position: absolute; left: 160px; width: 1000px; height: 2140px; border-radius: 156px; background: #0d0d0d; padding: 24px; z-index: 2;
+    box-shadow: 0 0 0 3px #2b2b2b, 0 90px 170px rgba(18,18,18,.25); }
+  .ink .phone { box-shadow: 0 0 0 4px #3a3a3a, 0 90px 170px rgba(0,0,0,.7); }
+  .pen .phone { box-shadow: 0 0 0 3px #2b2b2b, 0 90px 170px rgba(80,0,0,.45); }
+  .screen { position: relative; width: 952px; height: 2092px; border-radius: 132px; overflow: hidden; background: #fff; }
+  .island { position: absolute; top: 30px; left: 50%; width: 300px; height: 90px; margin-left: -150px; background: #000; border-radius: 45px; z-index: 5; }
+  .ui { position: absolute; left: 0; top: 0; width: 390px; transform-origin: 0 0; color: var(--ink); font-family: Onest, sans-serif; }
+
+  /* ---------- Pop-out cards ---------- */
+  .pop { position: absolute; z-index: 6; background: #fff; border-radius: 48px; box-shadow: 0 50px 110px rgba(18,18,18,.30), 0 0 0 2px rgba(18,18,18,.04); overflow: hidden; }
+  .pop .ui { position: absolute; }
+  .pop.tag { background: #121212; border-radius: 999px; }
+  .pen .pop.tag { background: #121212; }
+  .marks { position: absolute; inset: 0; pointer-events: none; z-index: 8; overflow: visible; }
+
+  /* ---------- App UI (390pt wide, same tokens as the app) ---------- */
+  .sb { height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 8px 30px 0 40px; font: 600 16.5px Onest; }
+  .sb .r { display: flex; gap: 6px; align-items: center; }
+  .hdr { display: flex; align-items: center; height: 50px; padding: 0 10px; gap: 4px; }
+  .hdr .mid { flex: 1; text-align: center; min-width: 0; }
+  .hdr .mid b { display: block; font: 600 16px Onest; }
+  .hdr .mid span { display: block; font: 400 12.5px Onest; color: var(--ink3); }
+  .ib { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .pad { padding: 0 20px; }
+  .title { font: 700 30px/1.12 Onest; letter-spacing: -.7px; }
+  .body { font: 400 15px/1.45 Onest; color: var(--ink2); }
+  .cap { font: 400 12.5px/1.35 Onest; color: var(--ink3); }
+  .h3 { font: 600 16.5px/1.28 Onest; letter-spacing: -.2px; }
+  .small { font: 400 14px/1.45 Onest; color: var(--ink2); }
+  .sm { font: 500 14px/1.35 Onest; }
+  .summary { font: 500 18px/1.5 Onest; letter-spacing: -.2px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; font: 500 12.5px Onest; white-space: nowrap; }
+  .tabs { display: flex; gap: 6px; margin: 22px -20px 14px; padding: 0 20px; overflow: hidden; }
+  .tab { height: 37px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--ruleS); display: flex; align-items: center; font: 500 14px Onest; white-space: nowrap; flex: none; }
+  .tab small { font: 400 14px Onest; color: var(--ink3); margin-left: 4px; }
+  .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tab.on small { color: rgba(255,255,255,.65); }
+  .finding { display: flex; gap: 12px; padding: 15px 15px 15px 15px; border: 1px solid var(--rule); border-radius: 16px; margin-bottom: 10px; background: #fff; }
+  .finding .st { width: 4px; border-radius: 2px; flex: none; }
+  .ucard { border: 1px solid var(--rule); border-radius: 16px; padding: 16px; background: #fff; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .row:last-child { border-bottom: 0; }
+  .val { font: 600 17px Onest; letter-spacing: -.3px; white-space: nowrap; }
+  .unit { font: 400 11.5px Onest; color: var(--ink3); }
+  .status { font: 500 12.5px Onest; }
+  .dots { display: flex; gap: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 5px; border: 1.5px solid var(--ruleS); }
+  .dot.on { background: var(--ink); border-color: var(--ink); }
+  .dot.t { background: var(--pen); border-color: var(--pen); }
+  .est { font: 700 24px/1.1 Caveat; color: var(--ink); }
+  .handu { font: 700 25px/1.05 Caveat; color: var(--pen); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 400 12px 'JetBrains Mono'; color: var(--ink); background: var(--paper2); padding: 3px 8px; border-radius: 6px; }
+  .btn { height: 52px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px; font: 600 16px Onest; }
+  .btn.pen { background: var(--pen); color: #fff; }
+  .btn.ink { background: var(--ink); color: #fff; }
+  .btn.ghost { border: 1px solid var(--ruleS); }
+  .btn.sm { height: 42px; font-size: 14px; padding: 0 14px; }
+  .av { border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-family: Onest; font-weight: 600; flex: none; }
+  .sect { display: flex; justify-content: space-between; align-items: baseline; margin: 24px 0 10px; }
+  .sect b { font: 600 19px Onest; letter-spacing: -.3px; }
+  .num { font: 700 34px/36px Caveat; color: var(--pen); width: 22px; flex: none; }
+  .fchip { height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--ruleS); display: flex; align-items: center; font: 500 13px Onest; white-space: nowrap; }
+  .fchip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .advice { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .aic { width: 34px; height: 34px; border-radius: 17px; background: var(--penSoft); display: flex; align-items: center; justify-content: center; flex: none; }
+  .sheet { background: #fff; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.14); padding: 18px 16px; font-family: -apple-system, Helvetica, Arial, sans-serif; color: #121212; }
+  .sheet table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+  .sheet th { text-align: left; color: #4F4F49; font-weight: 600; border-bottom: 1px solid #CFCFC8; padding: 3px 4px; }
+  .sheet td { border-bottom: 1px solid #E6E6E1; padding: 3px 4px; }
+  .sheet tr.f td { color: #D2261C; font-weight: 600; }
+  .thumb { width: 104px; height: 140px; border-radius: 10px; border: 1px solid var(--rule); background: #fff; padding: 10px 8px; position: relative; flex: none; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .thumb i { display: block; height: 3px; border-radius: 2px; background: #E1E1DB; margin: 0 0 6px; }
+  .thumb .n { position: absolute; left: 6px; bottom: 6px; width: 20px; height: 20px; border-radius: 10px; background: var(--ink); color: #fff; font: 600 11px/20px Onest; text-align: center; }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--penSoft); border-top-color: var(--pen); }
+  .step { width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--ruleS); display: flex; align-items: center; justify-content: center; flex: none; }
+  .step.done { background: var(--ink); border-color: var(--ink); }
+  .step.act { border-color: var(--pen); }
+</style>
+<script src="copy.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const P = new URLSearchParams(location.search);
+const LANG = P.get("lang") || "en";
+const N = P.get("n");
+const C = COPY[LANG];
+const U = C.ui;
+
+// ---------- Icons (Feather) ----------
+const ICON = {
+  back: '<polyline points="15 18 9 12 15 6"/>',
+  right: '<polyline points="9 18 15 12 9 6"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  coffee: '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>',
+  wind: '<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  alert: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  okc: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  edit: '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+  scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
+};
+const ic = (n, size = 20, color = "currentColor", sw = 2) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:block">${ICON[n]}</svg>`;
+
+const SEV = { good: ["#1F7A4D", "#E6F3EC", "okc"], watch: ["#9A6400", "#FBF1DC", "eye"], attention: ["#D2261C", "#FBE9E6", "alert"], info: ["#4F4F49", "#F6F6F3", "alert"] };
+const COL = { pen: "#D2261C", warn: "#9A6400", good: "#1F7A4D", ink3: "#8A8A82" };
+const pill = (s, label) => { const [fg, bg, i] = SEV[s]; return `<span class="pill" style="color:${fg};background:${bg}">${ic(i, 14, fg)}${label ?? U.status[s]}</span>`; };
+const av = (name, color, size) => `<div class="av" style="width:${size}px;height:${size}px;background:${color};font-size:${size * 0.42}px">${name[0]}</div>`;
+const LEVEL = { strong: 4, moderate: 3, screening: 2, test: 1 };
+const dots = (c) => `<div class="dots">${[1, 2, 3, 4].map((i) => `<div class="dot ${i <= LEVEL[c] ? (c === "test" ? "t" : "on") : ""}"></div>`).join("")}</div>`;
+const statusBar = () => `<div class="sb"><span>9:41</span><span class="r">
+  <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#121212"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="#121212"/><rect x="10" y="3" width="3" height="9" rx="1" fill="#121212"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#121212"/></svg>
+  <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0L8 11.5Zm-4.2-4.3L2.4 5.8a8 8 0 0 1 11.2 0l-1.4 1.4a6 6 0 0 0-8.4 0ZM.6 4 0 3.4l.6.6Zm-.6-.6A11.3 11.3 0 0 1 16 3.4L14.6 4.8a9.3 9.3 0 0 0-13.2 0L0 3.4Z" fill="#121212"/></svg>
+  <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="#121212" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#121212"/><rect x="23.5" y="4" width="1.5" height="4" rx=".75" fill="#121212" opacity=".4"/></svg></span></div>`;
+const header = (title, sub, right = "") => `<div class="hdr"><div class="ib">${ic("back", 24)}</div><div class="mid"><b>${title}</b>${sub ? `<span>${sub}</span>` : ""}</div><div style="display:flex">${right || '<div class="ib"></div>'}</div></div>`;
+const reportHeader = () => header(U.person, U.date, `<div class="ib">${ic("share", 21)}</div><div class="ib">${ic("trash", 21)}</div>`);
+const tabs = (on) => {
+  const counts = [6, 5, 8, 36, 5];
+  return `<div class="tabs">${U.tabs.map((t, i) => `<div class="tab ${i === on ? "on" : ""}">${t}<small>${counts[i]}</small></div>`).join("")}</div>`;
+};
+const penLine = (w) => `<svg width="${w}" height="12" viewBox="0 0 ${w} 12" style="display:block;margin-top:8px"><path d="M2 8 C ${w * 0.3} 3, ${w * 0.6} 11, ${w - 2} 5" fill="none" stroke="#D2261C" stroke-width="3.2" stroke-linecap="round"/></svg>`;
+function spark(vals, w, h, color, opts = {}) {
+  const min = Math.min(...vals), max = Math.max(...vals), r = max - min || 1, pad = opts.pad ?? 4;
+  const pts = vals.map((v, i) => [pad + (i * (w - pad * 2)) / (vals.length - 1), pad + (1 - (v - min) / r) * (h - pad * 2)]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const last = pts[pts.length - 1];
+  const area = opts.area ? `<path d="${d} L ${last[0]} ${h} L ${pts[0][0]} ${h} Z" fill="${color}" opacity=".08"/>` : "";
+  const allDots = opts.dots ? pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="${opts.dots}" fill="#fff" stroke="${color}" stroke-width="2"/>`).join("") : "";
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:none;overflow:visible">${area}<path d="${d}" fill="none" stroke="${color}" stroke-width="${opts.sw ?? 2}" stroke-linecap="round" stroke-linejoin="round"/>${allDots}<circle cx="${last[0]}" cy="${last[1]}" r="${opts.lastR ?? 3}" fill="${color}"/></svg>`;
+}
+const finding = ([s, t, d]) => { const fg = s === "good" ? COL.good : s === "watch" ? COL.warn : COL.pen; return `<div class="finding"><div class="st" style="background:${fg}"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px"><div class="h3">${t}</div><div class="small">${d}</div></div></div>`; };
+const hiddenRow = ([name, est, c], first) => `<div class="ucard" style="margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
+  <div style="display:flex;align-items:center;gap:10px">${dots(c)}<span class="cap">${U.conf[c]}</span></div>
+  <div class="h3">${name}</div><div class="est" style="${c === "test" ? "color:#D2261C" : ""}" ${first ? 'data-mark="u"' : ""}>${est}</div></div>`;
+const indexRow = ([n, ref, v, unit, st, col]) => `<div class="row"><div style="flex:1;min-width:0"><div class="sm">${n}</div><div class="cap">${ref}</div></div>
+  <div style="text-align:right"><div class="val" style="font-size:18px">${v}${unit ? ` <span class="unit">${unit}</span>` : ""}</div><div class="status" style="color:${COL[col]}">${st}</div></div></div>`;
+const deltaRow = ([n, a, b, unit, d, pct]) => {
+  const col = d === "worse" ? COL.pen : d === "better" ? COL.good : COL.ink3;
+  const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
+  return `<div class="row"><div style="flex:1;min-width:0"><div class="sm">${n}</div><div class="status" style="color:${col}">${U.dir[d]} · ${arrow} ${Math.abs(pct)}%</div></div>
+  <div class="val"><span style="font-weight:400;font-size:14px;color:#8A8A82">${a} → </span><span style="${d === "worse" ? "color:#D2261C" : ""}">${b}</span> <span class="unit">${unit}</span></div>${ic("right", 16, "#8A8A82")}</div>`;
+};
+const AREA_IC = { activity: "activity", nutrition: "coffee", sleep: "moon", stress: "wind" };
+const adviceRow = ([a, t, d]) => `<div class="advice"><div class="aic">${ic(AREA_IC[a], 17, "#D2261C")}</div><div style="flex:1;display:flex;flex-direction:column;gap:3px"><div class="cap">${U.area[a]}</div><div class="h3" style="font-weight:500;font-size:16px">${t}</div><div class="small">${d}</div></div></div>`;
+
+// ---------- Screens (inside the phone) ----------
+const SCREENS = [
+  // 1. Report reading
+  () => `${statusBar()}${reportHeader()}<div class="pad">
+    <div style="display:flex;gap:10px;align-items:center;margin-top:4px">${av(U.first, "#D2261C", 30)}${pill("attention")}</div>
+    <div class="summary" style="margin-top:12px">${U.summary}</div>${penLine(140)}
+    ${tabs(0)}${U.findings.map(finding).join("")}</div>`,
+  // 2. Hidden tests list
+  () => `${statusBar()}${reportHeader()}<div class="pad">${tabs(2)}${U.hidden.map((h, i) => hiddenRow(h, i === 0)).join("")}</div>`,
+  // 3. One hidden test in detail
+  () => {
+    const b = U.big;
+    return `${statusBar()}${reportHeader()}<div class="pad">${tabs(2)}
+    <div class="ucard" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">${dots("strong")}<span class="cap">${U.conf.strong}</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><div class="h3" style="font-size:19px">${b.name}</div><div class="est" style="font-size:30px" data-mark="u">${b.est}</div></div>
+      <div class="small">${b.expl}</div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div class="cap">${b.builtFrom}</div><div class="chips">${b.inputs.map((x) => `<span class="chip">${x}</span>`).join("")}</div></div>
+      <div style="display:flex;gap:8px;padding-top:12px;border-top:1px solid #E6E6E1">${ic("scissors", 14, "#4F4F49")}<div class="small" style="flex:1"><b style="font-weight:500;color:#121212">${b.spares}:</b> ${b.sparesText}</div></div>
+    </div></div>`;
+  },
+  // 4. Indices
+  () => `${statusBar()}${reportHeader()}<div class="pad">${tabs(0)}<div class="sect"><b>${U.indicesTitle}</b></div>
+    <div class="ucard" style="padding:2px 16px">${U.indices.map(indexRow).join("")}</div></div>`,
+  // 5. Changes
+  () => `${statusBar()}${reportHeader()}<div class="pad">${tabs(1)}<div class="sect"><b style="font-size:17px">${U.changesSince}</b></div>${U.deltas.map(deltaRow).join("")}</div>`,
+  // 6. Tracking
+  () => `${statusBar()}${header("", "", `<div class="ib">${ic("edit", 20)}</div>`)}<div class="pad">
+    <div style="display:flex;align-items:center;gap:16px;margin-top:4px">${av(U.first, "#D2261C", 64)}<div><div class="title" style="font-size:26px">${U.person}</div><div class="body">${U.members[0][1]}</div></div></div>
+    <div class="btn pen" style="margin-top:18px">${ic("camera", 19, "#fff")}${U.uploadTitle}</div>
+    <div class="sect"><b>${U.tracking}</b></div>
+    <div style="display:flex;gap:8px;margin-bottom:6px">${U.filters.map((f, i) => `<div class="fchip ${i === 0 ? "on" : ""}">${f}</div>`).join("")}</div>
+    ${U.series.map(([n, v, unit, vals, out]) => {
+      const pct = Math.round(((vals[vals.length - 1] - vals[vals.length - 2]) / vals[vals.length - 2]) * 100);
+      return `<div class="row"><div style="flex:1;min-width:0"><div class="sm">${n}</div><div class="status" style="color:${Math.abs(pct) < 3 ? "#8A8A82" : "#4F4F49"}">${pct > 0 ? "↑" : pct < 0 ? "↓" : "→"} ${Math.abs(pct)}%</div></div>
+      ${spark(vals, 64, 26, out ? "#D2261C" : "#121212")}<div class="val" style="min-width:76px;text-align:right;${out ? "color:#D2261C" : ""}">${v} <span class="unit">${unit}</span></div></div>`;
+    }).join("")}</div>`,
+  // 7. Advice
+  () => `${statusBar()}${reportHeader()}<div class="pad">${tabs(4)}
+    <div class="h3" style="font-size:19px">${U.nextSteps}</div>
+    ${U.steps.map(([k, p, t], i) => `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #E6E6E1"><div class="num">${i + 1}</div><div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="display:flex;gap:6px"><span class="pill" style="background:#F6F6F3;color:#4F4F49">${k}</span><span class="pill" style="background:#FBE9E6;color:#D2261C">${p}</span></div><div class="h3">${t}</div></div></div>`).join("")}
+    <div class="sect"><b>${U.adviceTitle}</b></div>${U.advice.map(adviceRow).join("")}</div>`,
+  // 8. Family
+  () => `${statusBar()}<div class="pad" style="padding-top:18px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div class="title">${U.familyTitle}</div><div class="body" style="margin-top:4px">${U.familySub}</div></div>
+    <div class="btn ink sm" style="flex:none">${ic("plus", 17, "#fff")}${U.addMember}</div></div>
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">${U.members.map(([n, rel, col, st, last]) => `<div class="ucard" style="display:flex;gap:14px;align-items:center">${av(n, col, 50)}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px"><div class="h3">${n}</div><div class="cap">${rel}</div><div>${pill(st)}</div><div class="cap">${last}</div></div>${ic("right", 18, "#8A8A82")}</div>`).join("")}</div></div>`,
+  // 9. Doctor PDF
+  () => `${statusBar()}${reportHeader()}<div style="background:#F6F6F3;padding:18px 22px 22px;margin-top:2px">
+    <div class="sheet"><div style="color:#D2261C;font-weight:700;font-size:9px;letter-spacing:.06em">LABLESS</div>
+      <div style="font-size:14px;font-weight:700;margin:3px 0 2px">${U.pdfTitle}</div>
+      <div style="font-size:8.5px;color:#4F4F49">${U.pdfWho}</div><div style="font-size:8.5px;color:#4F4F49">${U.pdfMeta}</div>
+      <div style="font-size:9.5px;margin-top:8px;line-height:1.45">${U.summary}</div>
+      <div style="font-size:9.5px;font-weight:700;margin:10px 0 4px;padding-bottom:3px;border-bottom:1.2px solid #121212">${U.pdfFindings}</div>
+      <div style="font-size:8.5px;line-height:1.5">${U.findings.map((f) => `• <b>${f[1]}.</b> ${f[2]}`).join("<br>")}</div>
+      <div style="font-size:9.5px;font-weight:700;margin:10px 0 4px;padding-bottom:3px;border-bottom:1.2px solid #121212">${U.pdfValues}</div>
+      <table><tr><th>${U.pdfMarker}</th><th>${U.pdfResult}</th><th>${U.pdfRange}</th></tr>${U.pdfRows.map(([a, b, c, f]) => `<tr class="${f ? "f" : ""}"><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join("")}</table>
+    </div></div>
+    <div class="pad" style="margin-top:16px;display:flex;flex-direction:column;gap:10px"><div class="btn ink">${ic("file", 19, "#fff")}${U.pdfButton}</div><div class="btn ghost">${ic("share", 19)}${U.share}</div></div>`,
+  // 10. Upload
+  () => `${statusBar()}${header(U.uploadTitle, "")}<div class="pad">
+    <div class="cap" style="font-size:14px;margin-top:6px">${U.forWho}</div>
+    <div style="display:flex;gap:8px;margin-top:10px">${[[U.you, "#D2261C", 1], [U.members[2][0], "#1F7A4D"], [U.members[3][0], "#9A6400"]].map(([n, c, on]) => `<div class="fchip ${on ? "on" : ""}" style="gap:8px;padding-left:4px;height:38px">${av(n, c, 28)}${n}</div>`).join("")}</div>
+    <div class="cap" style="font-size:14px;margin-top:22px">${U.pages}</div>
+    <div style="display:flex;gap:10px;margin-top:10px">${[1, 2].map((k) => `<div class="thumb">${Array.from({ length: 14 }, (_, i) => `<i style="width:${[92, 60, 80, 70, 86, 54, 90, 66, 78, 58, 88, 72, 64, 82][i]}%;${i === 0 ? "height:5px;background:#BDBDB6" : ""}${i === 5 && k === 1 ? ";background:#F1B5AF" : ""}"></i>`).join("")}<div class="n">${k}</div></div>`).join("")}
+      <div class="thumb" style="display:flex;align-items:center;justify-content:center;border-style:dashed;border-color:#CFCFC8;box-shadow:none">${ic("plus", 26, "#8A8A82")}</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px">${[["camera", U.camera], ["image", U.gallery], ["file", U.pdf]].map(([i, l]) => `<div class="btn ghost" style="height:48px;font-size:15px">${ic(i, 18)}${l}</div>`).join("")}</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:16px">${ic("lock", 15, "#8A8A82")}<span class="cap" style="font-size:13px">${U.privacy}</span></div>
+    <div class="btn pen" style="margin-top:16px">${U.readPages}</div></div>`,
+];
+
+// ---------- Pop-out cards ----------
+// x is px from the card's left (negative = from the right edge), y is px below the phone's top.
+const POPS = [
+  { x: -60, y: 1210, w: 300, s: 2.35, rot: -3, html: () => `<div style="padding:18px 20px 8px"><div class="handu">${U.neverTook}</div>
+      <div class="row" style="border:0;padding-top:8px"><div style="flex:1"><div class="h3" style="font-size:19px">HOMA-IR</div><div class="cap">${U.indices[0][1]}</div></div>
+      <div style="text-align:right"><div class="val" style="font-size:32px" data-mark="o">${U.indices[0][2]}</div><div class="status" style="color:#D2261C;margin-top:9px">${U.indices[0][4]}</div></div></div></div>` },
+  { x: 70, y: 1430, w: 0, s: 2.4, rot: -4, tag: true, html: () => `<div style="display:flex;align-items:center;gap:10px;padding:12px 22px 12px 16px;white-space:nowrap">${ic("check", 22, "#fff", 3)}<span style="font:700 27px/1 Caveat;color:#fff">${U.noDraw}</span></div>` },
+  { x: 48, y: 1330, w: 270, s: 2.45, rot: 2.5, html: () => `<div style="padding:18px 20px 12px"><div class="cap" style="margin-bottom:6px">${U.confTitle}</div>
+      ${["strong", "moderate", "screening", "test"].map((c) => `<div style="display:flex;align-items:center;gap:12px;padding:8px 0">${dots(c)}<span class="sm" style="${c === "test" ? "color:#D2261C" : ""}">${U.conf[c]}</span></div>`).join("")}</div>` },
+  { x: -54, y: 1240, w: 250, s: 2.5, rot: 3, html: () => `<div style="padding:18px 20px 16px"><div class="cap">${U.bioAge}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px"><span style="font:700 56px/1 Onest;letter-spacing:-2px" data-mark="o">${U.bioAgeVal}</span><span class="body">${U.bioAgeNote}</span></div>
+      <div class="handu" style="margin-top:8px">${U.bioAgeHand}</div></div>` },
+  { x: 50, y: 1530, w: 300, s: 2.4, rot: -2.5, html: () => `<div style="padding:18px 20px 16px"><div class="cap" style="margin-bottom:8px">${U.aiTitle}</div>
+      <div style="display:flex;gap:10px"><div style="width:9px;height:9px;border-radius:5px;background:#1F7A4D;margin-top:7px;flex:none"></div><div class="small" style="color:#121212"><b style="font-weight:600">${U.aiNote[0]}</b> ${U.aiNote[1]}</div></div></div>` },
+  { x: -44, y: 1330, w: 300, s: 2.35, rot: -2, html: () => `<div style="padding:18px 20px 14px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sm">${U.trendTitle}</span><span class="val" style="color:#D2261C">${U.series[0][1]} <span class="unit">${U.series[0][2]}</span></span></div>
+      <div style="margin:14px 0 6px">${spark(U.series[0][3], 260, 92, "#D2261C", { dots: 4, sw: 3, area: true, lastR: 5, pad: 8 })}</div>
+      <div style="display:flex;justify-content:space-between" class="cap">${U.years.map((y) => `<span>${y}</span>`).join("")}</div>
+      <div class="handu" style="margin-top:8px">${U.trendHand}</div></div>` },
+  { x: 50, y: 1420, w: 290, s: 2.4, rot: -2, html: () => `<div style="padding:18px 20px 16px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;gap:10px;align-items:center">${ic("bell", 19, "#D2261C")}<span class="h3">${U.reminder}</span></div>
+      <div class="sm">${U.reminderSet}</div><div class="handu">${U.reminderHand}</div></div>` },
+  { x: -46, y: 1560, w: 300, s: 2.35, rot: 2.5, html: () => `<div style="padding:18px 20px 16px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;gap:12px;align-items:center">${av(U.memberPop[0], "#9A6400", 40)}<div><div class="h3">${U.memberPop[0]}</div>${pill("watch", U.memberPop[2])}</div></div>
+      <div class="small" style="color:#121212">${U.memberPop[1]}</div></div>` },
+  { x: 40, y: 1340, w: 310, s: 2.3, rot: -2.5, html: () => `<div style="padding:18px 20px 14px"><div class="h3" style="margin-bottom:6px">${U.questionsTitle}</div>
+      ${U.questions.map((q) => `<div style="display:flex;gap:10px;padding:7px 0"><span style="font:700 24px/22px Caveat;color:#D2261C">?</span><span class="small" style="color:#121212;flex:1">${q}</span></div>`).join("")}</div>` },
+  { x: 46, y: 940, w: 290, s: 2.4, rot: -2.5, html: () => `<div style="padding:18px 20px 16px"><div class="h3" style="margin-bottom:10px">${U.stagesTitle}</div>
+      ${U.stages.map((s, i) => `<div style="display:flex;gap:12px;align-items:center;padding:6px 0"><div class="step ${i < 2 ? "done" : "act"}">${i < 2 ? ic("check", 14, "#fff", 3) : '<div class="spin"></div>'}</div><span class="sm" style="${i === 2 ? "font-weight:600" : "font-weight:400"}">${s}</span></div>`).join("")}
+      <div class="handu" style="margin-top:8px">${U.stagesHand}</div></div>` },
+];
+
+const THEMES = ["paper", "paper", "ink", "paper", "pen", "paper", "ink", "paper", "paper", "pen"];
+const MARKS = ["circle", "under", "circle", "under", "circle", "under", "circle", "under", "circle", "under"];
+
+// ---------- Hand-drawn strokes ----------
+function rnd(seed) { let s = seed; return () => ((s = (s * 9301 + 49297) % 233280) / 233280); }
+function circlePath(w, h, seed) {
+  const r = rnd(seed), cx = w / 2, cy = h / 2, rx = w / 2, ry = h / 2, pts = [];
+  for (let a = -0.35; a <= Math.PI * 2 + 0.55; a += 0.18) {
+    const k = 1 + (r() - 0.5) * 0.05 + (a > Math.PI * 2 ? 0.07 : 0);
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  return pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+}
+function underPath(w, y) { return `M ${-w * 0.02} ${y} C ${w * 0.3} ${y - 14}, ${w * 0.62} ${y + 12}, ${w * 1.03} ${y - 6}`; }
+
+function drawMarks(card, scale) {
+  const svg = card.querySelector(".marks");
+  const cr = card.getBoundingClientRect();
+  const k = cr.width / 1320;
+  let out = "";
+  const ink = card.classList.contains("pen") ? "#121212" : card.classList.contains("ink") ? "#FF3B2F" : "#D2261C";
+  card.querySelectorAll("h1 .m").forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    const x = (r.left - cr.left) / k, y = (r.top - cr.top) / k, w = r.width / k, h = r.height / k;
+    if (el.classList.contains("circle")) {
+      out += `<path transform="translate(${x - 18} ${y - 2}) rotate(-2 ${w / 2} ${h / 2})" d="${circlePath(w + 36, h + 10, 7 + i)}" fill="none" stroke="${ink}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+    } else {
+      out += `<path transform="translate(${x} ${y})" d="${underPath(w, h * 0.98)}" fill="none" stroke="${ink}" stroke-width="13" stroke-linecap="round"/>`;
+      out += `<path transform="translate(${x} ${y})" d="${underPath(w * 0.7, h * 1.08)}" fill="none" stroke="${ink}" stroke-width="7" stroke-linecap="round" opacity=".9"/>`;
+    }
+  });
+  card.querySelectorAll("[data-mark]").forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    const x = (r.left - cr.left) / k, y = (r.top - cr.top) / k, h = r.height / k;
+    // Measure the text itself, not the full-width block.
+    const range = document.createRange(); range.selectNodeContents(el);
+    const tr = range.getBoundingClientRect(); const w = tr.width / k; const tx = (tr.left - cr.left) / k;
+    if (el.dataset.mark === "o") {
+      out += `<path transform="translate(${tx - 28} ${y - 8})" d="${circlePath(w + 56, h + 16, 31 + i)}" fill="none" stroke="#D2261C" stroke-width="7" stroke-linecap="round"/>`;
+    } else {
+      out += `<path transform="translate(${tx} ${y})" d="${underPath(w, h * 1.02)}" fill="none" stroke="#D2261C" stroke-width="6" stroke-linecap="round"/>`;
+    }
+  });
+  svg.innerHTML = out;
+}
+
+// ---------- Card ----------
+function headline(text, mark) {
+  return text.replace(/\[(.+?)\]/, (_, m) => `<span class="m ${mark}">${m}</span>`);
+}
+
+function buildCard(i) {
+  const c = C.cards[i];
+  const card = document.createElement("div");
+  card.className = `card ${THEMES[i]}`;
+  card.innerHTML = `<div class="lines"></div><div class="margin"></div>
+    <div class="top"><div class="kicker"><i></i>${c.k}</div><h1>${headline(c.h, MARKS[i])}</h1><div class="hand">${c.hand}</div></div>
+    <div class="phone"><div class="screen"><div class="island"></div><div class="ui" style="transform:scale(${952 / 390})">${SCREENS[i]()}</div></div></div>
+    <div class="pop ${POPS[i].tag ? "tag" : ""}"><div class="ui">${POPS[i].html()}</div></div>
+    <svg class="marks" width="1320" height="2868" viewBox="0 0 1320 2868"></svg>`;
+  return card;
+}
+
+function layout(card, i) {
+  // Fit the headline into at most three lines.
+  const h1 = card.querySelector("h1"), top = card.querySelector(".top");
+  let fs = 132;
+  const fits = () => {
+    const lines = h1.offsetHeight / (fs * 1.02);
+    const marks = [...h1.querySelectorAll(".m")].every((m) => m.offsetWidth <= h1.clientWidth + 2);
+    return lines <= 3.1 && marks && h1.scrollWidth <= h1.clientWidth + 2;
+  };
+  h1.style.fontSize = fs + "px";
+  while (!fits() && fs > 80) { fs -= 4; h1.style.fontSize = fs + "px"; }
+
+  // The handwritten line stays on one line.
+  const hand = card.querySelector(".hand");
+  let hs = 86;
+  hand.style.whiteSpace = "nowrap";
+  while (hand.scrollWidth > top.clientWidth && hs > 60) { hs -= 2; hand.style.fontSize = hs + "px"; }
+  if (hand.scrollWidth > top.clientWidth) hand.style.whiteSpace = "normal";
+
+  const phone = card.querySelector(".phone");
+  const phoneTop = Math.max(900, 150 + top.offsetHeight + 96);
+  phone.style.top = phoneTop + "px";
+
+  const p = POPS[i], pop = card.querySelector(".pop"), ui = pop.querySelector(".ui");
+  ui.style.transform = `scale(${p.s})`;
+  if (p.w) ui.style.width = p.w + "px"; else ui.style.width = "max-content";
+  const w = ui.offsetWidth * p.s, h = ui.offsetHeight * p.s;
+  pop.style.width = w + "px"; pop.style.height = h + "px";
+  pop.style.left = (p.x >= 0 ? p.x : 1320 + p.x - w) + "px";
+  pop.style.top = phoneTop + p.y + "px";
+  pop.style.transform = `rotate(${p.rot}deg)`;
+}
+
+async function main() {
+  // Load every face before measuring, otherwise the pen marks are placed against fallback fonts.
+  await Promise.all(["400 20px Onest", "500 20px Onest", "600 20px Onest", "700 20px Onest", "800 20px Onest", "700 20px Caveat", "500 20px \"JetBrains Mono\"", "400 20px \"JetBrains Mono\""]
+    .flatMap((f) => [document.fonts.load(f, "Aa"), document.fonts.load(f, "Яя")]));
+  await document.fonts.ready;
+  const root = document.getElementById("root");
+  if (N) {
+    document.body.classList.add("single");
+    const i = Number(N) - 1;
+    const card = buildCard(i);
+    root.appendChild(card);
+    layout(card, i);
+    drawMarks(card);
+  } else {
+    const g = Number(P.get("g") || 0.22);
+    const wrap = document.createElement("div");
+    wrap.className = "gallery"; wrap.style.setProperty("--g", g);
+    root.appendChild(wrap);
+    for (let i = 0; i < 10; i++) {
+      const slot = document.createElement("div"); slot.className = "slot";
+      const card = buildCard(i);
+      card.style.transform = "none";
+      slot.appendChild(card); wrap.appendChild(slot);
+      layout(card, i);
+      drawMarks(card);
+      card.style.transform = "";
+    }
+  }
+  document.body.dataset.ready = "1";
+}
+main();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Sparkline } from "@/components/Chart";
 import { confirm } from "@/components/confirm";
@@ -12,6 +12,7 @@ import { useAnalyses, useDeleteMember, useMember, useMemberResults, useReports }
 import { ageOf } from "@/lib/format";
 import { useSelectedMember } from "@/lib/selected";
 import { colors, fonts } from "@/lib/theme";
+import { useRefreshOnFocus } from "@/lib/useRefreshOnFocus";
 
 export default function MemberScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,6 +24,11 @@ export default function MemberScreen() {
   const results = useMemberResults(id);
   const del = useDeleteMember();
   const { select } = useSelectedMember();
+  useRefreshOnFocus(useCallback(() => {
+    reports.refetch();
+    results.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []));
 
   const trends = useMemo(() => {
     const byMarker = new Map<string, { name: string; unit: string | null; values: number[] }>();

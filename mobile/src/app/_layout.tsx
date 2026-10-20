@@ -13,7 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ToastProvider } from "@/components/Toast";
 import { I18nProvider, useI18n } from "@/i18n";
-import { ping, track } from "@/lib/analytics";
+import { ping, track, trackScreen } from "@/lib/analytics";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { useMembers, useProfile } from "@/lib/data";
 import { registerPush } from "@/lib/push";
@@ -67,7 +67,7 @@ function Gate() {
   }, [session, locale, profile.data?.notifications_enabled]);
 
   useEffect(() => {
-    if (session && pathname) track("screen_view", { path: pathname });
+    if (session && pathname) trackScreen(pathname);
   }, [pathname, session]);
 
   // Opening a push notification navigates to the screen it points at.

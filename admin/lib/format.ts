@@ -1,5 +1,6 @@
-const dtf = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-const df = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+const TZ = process.env.ADMIN_TIMEZONE ?? "Asia/Baku";
+const dtf = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: TZ });
+const df = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric", timeZone: TZ });
 
 export const fmtDateTime = (v: string | null | undefined) => (v ? dtf.format(new Date(v)) : "—");
 export const fmtDate = (v: string | null | undefined) => (v ? df.format(new Date(v)) : "—");

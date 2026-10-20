@@ -93,7 +93,8 @@ export default function Profile() {
               value={profile?.notifications_enabled ?? true}
               onValueChange={toggleNotifications}
               trackColor={{ true: colors.ink, false: colors.ruleStrong }}
-              thumbColor={Platform.OS === "android" ? "#fff" : undefined}
+              thumbColor="#fff"
+              {...(Platform.OS === "web" ? ({ activeThumbColor: "#fff", activeTrackColor: colors.ink } as object) : {})}
               accessibilityLabel={t.profile.notifications}
             />
           }

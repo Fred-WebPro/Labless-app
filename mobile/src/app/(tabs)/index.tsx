@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PenUnderline } from "@/components/Pen";
@@ -11,6 +11,7 @@ import { fill, formatDate, useI18n } from "@/i18n";
 import { useAnalyses, useMembers, useProfile, useReports } from "@/lib/data";
 import { useSelectedMember } from "@/lib/selected";
 import { colors, fonts, radius } from "@/lib/theme";
+import { useRefreshOnFocus } from "@/lib/useRefreshOnFocus";
 
 export default function Home() {
   const { t, locale } = useI18n();
@@ -21,6 +22,11 @@ export default function Home() {
   const reports = useReports(selected?.id);
   const analyses = useAnalyses();
   const [refreshing, setRefreshing] = useState(false);
+  useRefreshOnFocus(useCallback(() => {
+    reports.refetch();
+    analyses.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []));
 
   const list = reports.data ?? [];
   const latest = list[0];
@@ -75,7 +81,7 @@ export default function Home() {
             icon="file-plus"
             title={t.home.emptyTitle}
             body={t.home.emptyBody}
-            action={<Button label={selected && !selected.is_self ? fill(t.home.uploadFor, { name: selected.name }) : t.home.upload} kind="pen" icon="camera" onPress={() => router.push("/upload")} />}
+            action={<Button label={selected && !selected.is_self ? fill(t.home.uploadFor, { name: selected.name.split(" ")[0] }) : t.home.upload} kind="pen" icon="camera" onPress={() => router.push("/upload")} />}
           />
         </Card>
       ) : (

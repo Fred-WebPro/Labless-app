@@ -50,12 +50,15 @@ export function DateField({ label, value, onChange, placeholders, error }: Props
           placeholder={placeholders.day}
           placeholderTextColor={colors.ink3}
           keyboardType="number-pad"
-          maxLength={2}
           accessibilityLabel={`${label} ${placeholders.day}`}
           onChangeText={(v) => {
-            const next = digits(v, 2);
-            setDay(next);
-            if (next.length === 2) monthRef.current?.focus();
+            const all = digits(v, 8);
+            setDay(all.slice(0, 2));
+            if (all.length > 2) {
+              setMonth(all.slice(2, 4));
+              if (all.length > 4) setYear(all.slice(4, 8));
+              (all.length > 4 ? yearRef : monthRef).current?.focus();
+            } else if (all.length === 2) monthRef.current?.focus();
           }}
         />
         <TextInput
@@ -65,12 +68,12 @@ export function DateField({ label, value, onChange, placeholders, error }: Props
           placeholder={placeholders.month}
           placeholderTextColor={colors.ink3}
           keyboardType="number-pad"
-          maxLength={2}
           accessibilityLabel={`${label} ${placeholders.month}`}
           onChangeText={(v) => {
-            const next = digits(v, 2);
-            setMonth(next);
-            if (next.length === 2) yearRef.current?.focus();
+            const all = digits(v, 6);
+            setMonth(all.slice(0, 2));
+            if (all.length > 2) setYear(all.slice(2, 6));
+            if (all.length >= 2) yearRef.current?.focus();
           }}
         />
         <TextInput
@@ -97,6 +100,9 @@ export function DateField({ label, value, onChange, placeholders, error }: Props
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 8 },
   box: {
+    minWidth: 0,
+    width: 0,
+    flexBasis: 0,
     minHeight: 54,
     borderWidth: 1,
     borderColor: colors.ruleStrong,

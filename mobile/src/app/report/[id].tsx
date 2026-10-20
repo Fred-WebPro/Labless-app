@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { confirm } from "@/components/confirm";
 import { PenUnderline } from "@/components/Pen";
 import { Checkin, FindingCard, HiddenTestCard, IndexRow, ResultRow, StatusBadge, StepCard } from "@/components/report";
@@ -203,9 +203,9 @@ export default function ReportScreen() {
               </View>
             ) : null}
           </View>
-          <T v="h2" selectable>
+          <Text selectable style={styles.summary}>
             {a.summary}
-          </T>
+          </Text>
           <PenUnderline width={140} />
         </View>
 
@@ -229,7 +229,7 @@ export default function ReportScreen() {
           </View>
         ) : null}
 
-        <View style={styles.tabs}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs}>
           {tabs.map((x) => {
             const on = x.key === tab;
             return (
@@ -250,7 +250,7 @@ export default function ReportScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         {tab === "findings" ? (
           <View style={{ gap: 10 }}>
@@ -392,10 +392,12 @@ function Processing({ stage }: { stage: string | null }) {
 }
 
 const styles = StyleSheet.create({
+  summary: { fontFamily: fonts.medium, fontSize: 18, lineHeight: 27, color: colors.ink, letterSpacing: -0.2 },
   red: { marginTop: 20, backgroundColor: colors.pen, borderRadius: radius.lg, padding: 16, gap: 8 },
   redTitle: { fontFamily: fonts.semibold, fontSize: 16, color: "#fff" },
   redText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: "#fff" },
-  tabs: { flexDirection: "row", gap: 6, marginTop: 26, marginBottom: 16, flexWrap: "wrap" },
+  tabsScroll: { marginTop: 26, marginBottom: 16, marginHorizontal: -20, flexGrow: 0 },
+  tabs: { flexDirection: "row", gap: 6, paddingHorizontal: 20 },
   tab: { paddingHorizontal: 14, height: 38, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.ruleStrong, justifyContent: "center" },
   tabOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   tabText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink },

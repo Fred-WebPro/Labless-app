@@ -71,11 +71,15 @@ export function PushComposer({ fixedUserId }: { fixedUserId?: string }) {
   return (
     <form className="stack" onSubmit={submit}>
       <label className="field">
-        Заголовок <span className="muted">({title.length}/80)</span>
+        <span>
+          Заголовок <span className="muted">({title.length}/80)</span>
+        </span>
         <input className="input" value={title} maxLength={80} onChange={(e) => { setTitle(e.target.value); setConfirming(false); }} placeholder="Новый скрытый анализ: апноэ сна" />
       </label>
       <label className="field">
-        Текст <span className="muted">({body.length}/300)</span>
+        <span>
+          Текст <span className="muted">({body.length}/300)</span>
+        </span>
         <textarea className="input" value={body} maxLength={300} onChange={(e) => { setBody(e.target.value); setConfirming(false); }} placeholder="Загрузите последние анализы, и мы проверим риск апноэ без ночи в лаборатории." />
       </label>
       {!fixedUserId && (

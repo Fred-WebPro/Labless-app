@@ -3,25 +3,68 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { browserClient } from "@/lib/browser";
 
+const TEXT = {
+  en: {
+    title: "Set a new password",
+    label: "New password",
+    save: "Save password",
+    saving: "Saving…",
+    short: "Use at least 8 characters.",
+    expired: "This link has expired or was already used. Request a new one in the app.",
+    done: "Password updated",
+    doneBody: "Go back to the Labless app and sign in with your new password.",
+  },
+  es: {
+    title: "Nueva contraseña",
+    label: "Nueva contraseña",
+    save: "Guardar contraseña",
+    saving: "Guardando…",
+    short: "Usa al menos 8 caracteres.",
+    expired: "Este enlace caducó o ya se usó. Pide uno nuevo en la app.",
+    done: "Contraseña actualizada",
+    doneBody: "Vuelve a la app Labless y entra con tu nueva contraseña.",
+  },
+  ru: {
+    title: "Новый пароль",
+    label: "Новый пароль",
+    save: "Сохранить пароль",
+    saving: "Сохраняем…",
+    short: "Не меньше 8 символов.",
+    expired: "Ссылка устарела или уже использована. Запросите новую в приложении.",
+    done: "Пароль обновлён",
+    doneBody: "Вернитесь в приложение Labless и войдите с новым паролем.",
+  },
+};
+
 /** Landing page for the password reset email sent from the app. */
 export default function ResetPassword() {
+  const [t, setT] = useState(TEXT.en);
   const [ready, setReady] = useState(false);
+  const [checked, setChecked] = useState(false);
   const [password, setPassword] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const lang = navigator.language.slice(0, 2);
+    if (lang === "es" || lang === "ru") setT(TEXT[lang]);
+
     const supabase = browserClient();
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
     const code = new URLSearchParams(window.location.search).get("code");
+    const done = () => setChecked(true);
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (!error) setReady(true);
+        done();
       });
     } else {
-      supabase.auth.getSession().then(({ data }) => data.session && setReady(true));
+      supabase.auth.getSession().then(({ data: s }) => {
+        if (s.session) setReady(true);
+        setTimeout(done, 600);
+      });
     }
     return () => data.subscription.unsubscribe();
   }, []);
@@ -30,7 +73,7 @@ export default function ResetPassword() {
     e.preventDefault();
     if (password.length < 8) {
       setState("error");
-      setMessage("Use at least 8 characters.");
+      setMessage(t.short);
       return;
     }
     setState("busy");
@@ -53,23 +96,24 @@ export default function ResetPassword() {
         {state === "done" ? (
           <>
             <p className="hand" style={{ fontSize: 30, margin: 0 }}>
-              Password updated
+              {t.done}
             </p>
             <p className="muted" style={{ margin: 0 }}>
-              Go back to the Labless app and sign in with your new password.
+              {t.doneBody}
             </p>
           </>
         ) : !ready ? (
-          <p className="muted">This link has expired or was already used. Request a new one in the app.</p>
+          <p className="muted">{checked ? t.expired : "…"}</p>
         ) : (
           <>
+            <p style={{ margin: 0, fontWeight: 600 }}>{t.title}</p>
             <label className="field">
-              New password
+              {t.label}
               <input className="input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
             {state === "error" && <p className="err">{message}</p>}
             <button className="btn btn--ink" disabled={state === "busy"}>
-              {state === "busy" ? "Saving…" : "Save password"}
+              {state === "busy" ? t.saving : t.save}
             </button>
           </>
         )}

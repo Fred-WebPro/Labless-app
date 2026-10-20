@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBadge } from "@/components/report";
@@ -9,6 +9,7 @@ import { fill, formatDate, useI18n } from "@/i18n";
 import { useAnalyses, useMembers, useReports } from "@/lib/data";
 import { ageOf } from "@/lib/format";
 import { colors } from "@/lib/theme";
+import { useRefreshOnFocus } from "@/lib/useRefreshOnFocus";
 
 export default function Family() {
   const { t, locale } = useI18n();
@@ -17,6 +18,11 @@ export default function Family() {
   const reports = useReports();
   const analyses = useAnalyses();
   const [refreshing, setRefreshing] = useState(false);
+  useRefreshOnFocus(useCallback(() => {
+    reports.refetch();
+    analyses.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []));
 
   const refresh = async () => {
     setRefreshing(true);

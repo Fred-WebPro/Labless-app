@@ -47,7 +47,7 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
       const files = await loadFiles((report.files ?? []) as ReportFile[]);
       if (files.length === 0) throw new AnalysisError("not_a_report", "No files were uploaded.");
 
-      const extraction = await extractReport(files);
+      const extraction = await extractReport(files, locale);
       const rows = (extraction.results ?? []).filter((r) => r.name);
       if (!extraction.is_lab_report || rows.length === 0) {
         throw new AnalysisError("not_a_report", "We couldn't find lab results in these files.");
@@ -71,7 +71,8 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
           member_id: report.member_id,
           owner_id: report.owner_id,
           marker: r.marker === "other" ? `other:${r.name.toLowerCase().slice(0, 40)}` : r.marker,
-          name: r.name,
+          name: r.display_name?.trim() || r.name,
+          printed_name: r.name,
           category: def?.category ?? "other",
           value: canonical ? r.canonical_value : r.value,
           value_text: r.value_text,

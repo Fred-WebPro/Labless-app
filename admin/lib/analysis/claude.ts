@@ -46,6 +46,7 @@ const nullable = (type: "string" | "number" | "integer" | "boolean") => ({ type:
 export type ExtractedResult = {
   marker: string;
   name: string;
+  display_name: string;
   value: number | null;
   value_text: string | null;
   unit: string | null;
@@ -80,10 +81,11 @@ const EXTRACTION_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["marker", "name", "value", "value_text", "unit", "canonical_value", "ref_low", "ref_high", "ref_text", "flag"],
+        required: ["marker", "name", "display_name", "value", "value_text", "unit", "canonical_value", "ref_low", "ref_high", "ref_text", "flag"],
         properties: {
           marker: { type: "string", enum: [...MARKER_KEYS, "other"] },
           name: { type: "string" },
+          display_name: { type: "string" },
           value: nullable("number"),
           value_text: nullable("string"),
           unit: nullable("string"),
@@ -104,7 +106,7 @@ const EXTRACTION_SYSTEM = `You read medical laboratory reports (photos or PDFs, 
 
 Rules:
 - Read every row of every page. Do not skip tests, do not invent tests that are not printed.
-- "name" is the test name exactly as printed. "value" is the number as printed, in the printed unit. Use a dot as the decimal separator (convert "5,42" to 5.42).
+- "name" is the test name exactly as printed. "display_name" is the short standard name of the test in the language the request asks for (for example "Hemoglobin", "Hemoglobina", "Гемоглобин"); keep common abbreviations like ALT, TSH, HbA1c. "value" is the number as printed, in the printed unit. Use a dot as the decimal separator (convert "5,42" to 5.42).
 - Qualitative results (Negative, Positive, "< 0.1") go in value_text; put the number in value only when one is printed.
 - Map each test to one catalog key in "marker"; use "other" only when nothing fits. A value printed as a percentage of white cells is the *_pct key, an absolute count is the *_abs key.
 - canonical_value is the value converted to the catalog unit for that key (for example glucose 6.0 mmol/L -> 108.1 mg/dL, hemoglobin 154 g/L -> 15.4 g/dL, creatinine 88 µmol/L -> 1.0 mg/dL, triglycerides 1.83 mmol/L -> 162 mg/dL, 10^3/µL equals 10^9/L). If the unit already matches, copy the value. Null when it can't be converted.
@@ -118,7 +120,7 @@ ${CATALOG}`;
 
 type FileInput = { mediaType: string; data: string };
 
-export async function extractReport(files: FileInput[]): Promise<Extraction> {
+export async function extractReport(files: FileInput[], locale: string): Promise<Extraction> {
   const content: Anthropic.Beta.BetaContentBlockParam[] = files.map((f) =>
     f.mediaType === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data } }
@@ -131,7 +133,7 @@ export async function extractReport(files: FileInput[]): Promise<Extraction> {
           },
         },
   );
-  content.push({ type: "text", text: "Extract every test result from this laboratory report." });
+  content.push({ type: "text", text: `Extract every test result from this laboratory report. Write display_name in ${LANG[locale] ?? "English"}.` });
 
   const response = await create({
     model: MODEL,

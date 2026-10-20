@@ -32,8 +32,20 @@ export function track(name: string, props: Record<string, unknown> = {}) {
   })();
 }
 
-/** Records an app open and refreshes the device fields shown in the admin panel. */
+let lastPing = 0;
+let lastScreen = "";
+
+/** Screen views, skipping repeats of the same screen. */
+export function trackScreen(path: string) {
+  if (path === lastScreen) return;
+  lastScreen = path;
+  track("screen_view", { path });
+}
+
+/** Records an app open (at most once a minute) and refreshes the device fields shown in the admin panel. */
 export function ping(locale: string) {
+  if (Date.now() - lastPing < 60_000) return;
+  lastPing = Date.now();
   void (async () => {
     try {
       const userId = await uid();

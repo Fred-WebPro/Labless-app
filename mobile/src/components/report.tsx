@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Pill, T, tap } from "@/components/ui";
-import { useI18n, formatNumber } from "@/i18n";
+import { fill, useI18n, formatNumber } from "@/i18n";
 import { colors, fonts, radius, severity } from "@/lib/theme";
 import type { Analysis, CheckinQuestion, Finding, HiddenTest, IndexResult, NextStep, Result } from "@/lib/types";
 
@@ -112,14 +112,17 @@ export function HiddenTestCard({ test }: { test: HiddenTest }) {
 
 export function IndexRow({ index }: { index: IndexResult }) {
   const { t, locale } = useI18n();
+  const loc = (t.indices as Record<string, { name: string; ref: string } | undefined>)[index.key];
+  const name = loc?.name ?? index.name;
+  const reference = loc ? fill(loc.ref, { age: index.reference.match(/\d+/)?.[0] ?? "" }) : index.reference;
   const bad = index.status === "high" || index.status === "low";
   const color = bad ? colors.pen : index.status === "borderline" ? colors.warn : colors.good;
   return (
     <View style={styles.indexRow}>
       <View style={{ flex: 1, gap: 2 }}>
-        <T v="smallMedium">{index.name}</T>
+        <T v="smallMedium">{name}</T>
         <T v="caption" numberOfLines={2}>
-          {index.reference}
+          {reference}
         </T>
       </View>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
@@ -199,9 +202,22 @@ export function Checkin({
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState(false);
   const open = questions.filter((q) => !answers[q.id]);
   if (!open.length) return null;
   const picked = Object.keys(draft).length;
+
+  if (!expanded) {
+    return (
+      <View style={styles.checkin}>
+        <T v="handLarge" style={{ fontSize: 30 }}>
+          {t.report.checkinTitle}
+        </T>
+        <T v="small">{t.report.checkinBody}</T>
+        <Button label={fill(t.report.checkinStart, { n: open.length })} kind="pen" icon="message-circle" onPress={() => setExpanded(true)} style={{ marginTop: 10 }} small />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.checkin}>

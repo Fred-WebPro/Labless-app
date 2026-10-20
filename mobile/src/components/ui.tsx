@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useI18n } from "@/i18n";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
 export type IconName = ComponentProps<typeof Feather>["name"];
@@ -268,9 +269,10 @@ export function Screen({
 
 export function Header({ title, onBack, right, subtitle }: { title?: string; onBack?: () => void; right?: ReactNode; subtitle?: string }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   return (
     <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-      <View style={{ width: 44 }}>{onBack ? <IconButton icon="chevron-left" label="Back" onPress={onBack} /> : null}</View>
+      <View style={{ width: 44 }}>{onBack ? <IconButton icon="chevron-left" label={t.common.back} onPress={onBack} /> : null}</View>
       <View style={{ flex: 1, alignItems: "center" }}>
         {title ? (
           <T v="h3" numberOfLines={1}>

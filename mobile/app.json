@@ -87,7 +87,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Labless reads your sleep to explain your blood test results, for example how short sleep raises insulin and inflammation.",
-          "NSHealthUpdateUsageDescription": false,
+          "NSHealthUpdateUsageDescription": "Labless does not write to Apple Health. This permission is never requested; it is declared only because the Health library includes write functions.",
           "background": false
         }
       ]

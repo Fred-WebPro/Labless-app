@@ -11,7 +11,7 @@ import { colors, fonts } from "@/lib/theme";
 const ICONS: Record<string, IconName> = { index: "home", family: "users", inbox: "bell", profile: "user" };
 
 /** Four tabs with a raised upload button in the middle. */
-export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
+export function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const { data: inbox } = useInbox();
@@ -28,7 +28,8 @@ export function TabBar({ state, navigateToTab }: BottomTabBarProps) {
         accessibilityLabel={labels[route.name]}
         onPress={() => {
           tap();
-          if (!focused) navigateToTab(route.key);
+          const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
         }}
         style={styles.item}
       >

@@ -1,12 +1,8 @@
 # Builds the iOS app on a GitHub macOS runner and uploads it to App Store Connect (TestFlight).
 # `eas build --local` runs the build here, so it does not use the Expo cloud build quota.
-# Signing credentials come from Expo (set up once with `npx eas-cli credentials -p ios`).
-#
-# Secrets (repo Settings → Secrets and variables → Actions):
+# Signing credentials and the App Store Connect API key are stored in Expo
+# (set up once with `npx eas-cli credentials -p ios`), so the only secret is:
 #   EXPO_TOKEN     expo.dev → Account settings → Access tokens
-#   ASC_KEY_ID     App Store Connect → Users and Access → Integrations → API key ID
-#   ASC_ISSUER_ID  same page, Issuer ID
-#   ASC_KEY_P8     full text of the downloaded AuthKey_XXXX.p8 file
 name: iOS → TestFlight
 
 on:
@@ -55,12 +51,4 @@ jobs:
           retention-days: 7
 
       - name: Upload to App Store Connect
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          printf '%s\n' "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          xcrun altool --upload-app --type ios --file "$RUNNER_TEMP/labless.ipa" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
-          rm -f ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+        run: eas submit --platform ios --profile production --path "$RUNNER_TEMP/labless.ipa" --non-interactive --wait

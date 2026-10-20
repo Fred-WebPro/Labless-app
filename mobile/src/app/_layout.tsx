@@ -19,6 +19,7 @@ import { useMembers, useProfile } from "@/lib/data";
 import { registerPush } from "@/lib/push";
 import { queryClient } from "@/lib/query";
 import { SelectedMemberProvider } from "@/lib/selected";
+import { hasPendingShare } from "@/lib/share";
 import { colors } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { Button, T } from "@/components/ui";
@@ -49,6 +50,8 @@ function Gate() {
       if (first !== "onboarding" && first !== "member") router.replace("/onboarding");
     } else if (!first || (PUBLIC.has(first) && first !== "legal") || first === "onboarding") {
       router.replace("/");
+      // A file shared before signing in is still waiting: continue straight to the upload.
+      if (hasPendingShare()) setTimeout(() => router.push("/upload?shared=1"), 300);
     }
   }, [ready, session, needsOnboarding, first]);
 

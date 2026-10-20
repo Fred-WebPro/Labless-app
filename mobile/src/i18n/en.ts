@@ -155,6 +155,9 @@ export const en = {
     maxPages: "Up to 10 pages per report.",
     pdfPage: "PDF document",
     privacy: "Files are encrypted and visible only to you.",
+    shared: "Received from another app. Choose whose report it is and tap Read.",
+    shareUnsupported: "Only photos and PDF files can be read.",
+    shareTip: "Tip: in WhatsApp, Mail or Files tap Share and choose Labless.",
   },
   report: {
     stages: {

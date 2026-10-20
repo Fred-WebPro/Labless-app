@@ -4,6 +4,7 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { Platform } from "react-native";
+import type { ResolvedSharePayload } from "expo-sharing";
 import { api } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +40,21 @@ export async function pickFromLibrary(limit: number): Promise<Page[]> {
   return res.assets.slice(0, limit).map((a) => ({ key: newKey(), uri: a.uri, kind: "image", width: a.width, height: a.height }));
 }
 
+/** Turns files shared from other apps into pages. Anything that isn't a photo or a PDF is skipped. */
+export function pagesFromShare(payloads: ResolvedSharePayload[]): Page[] {
+  const pages: Page[] = [];
+  for (const p of payloads) {
+    if (!p.contentUri) continue;
+    const mime = (p.contentMimeType ?? p.mimeType ?? "").toLowerCase();
+    const name = p.originalName ?? undefined;
+    const isPdf = mime === "application/pdf" || /\.pdf$/i.test(name ?? p.contentUri);
+    const isImage = p.contentType === "image" || mime.startsWith("image/");
+    if (isPdf) pages.push({ key: newKey(), uri: p.contentUri, kind: "pdf", name });
+    else if (isImage) pages.push({ key: newKey(), uri: p.contentUri, kind: "image", name });
+  }
+  return pages.slice(0, MAX_PAGES);
+}
+
 export async function pickPdf(): Promise<Page[]> {
   const res = await DocumentPicker.getDocumentAsync({ type: "application/pdf", multiple: false, copyToCacheDirectory: true });
   if (res.canceled) return [];
@@ -71,12 +87,14 @@ function base64ToBytes(b64: string): Uint8Array {
 /** Shrinks photos to a size that reads perfectly and uploads fast. */
 async function imageBytes(page: Page): Promise<Uint8Array> {
   const maxSide = 2000;
-  const ctx = ImageManipulator.manipulate(page.uri);
-  if (page.width && page.height && Math.max(page.width, page.height) > maxSide) {
-    if (page.width >= page.height) ctx.resize({ width: maxSide });
+  let ref = await ImageManipulator.manipulate(page.uri).renderAsync();
+  // Shared files arrive without dimensions, so size is checked on the decoded image.
+  if (Math.max(ref.width, ref.height) > maxSide) {
+    const ctx = ImageManipulator.manipulate(page.uri);
+    if (ref.width >= ref.height) ctx.resize({ width: maxSide });
     else ctx.resize({ height: maxSide });
+    ref = await ctx.renderAsync();
   }
-  const ref = await ctx.renderAsync();
   const saved = await ref.saveAsync({ format: SaveFormat.JPEG, compress: 0.78, base64: true });
   if (!saved.base64) throw new Error("encode_failed");
   return base64ToBytes(saved.base64);

@@ -157,6 +157,9 @@ export const es: typeof en = {
     maxPages: "Hasta 10 páginas por informe.",
     pdfPage: "Documento PDF",
     privacy: "Los archivos están cifrados y solo tú puedes verlos.",
+    shared: "Recibido de otra app. Elige de quién es el informe y pulsa Leer.",
+    shareUnsupported: "Solo se pueden leer fotos y archivos PDF.",
+    shareTip: "Consejo: en WhatsApp, Correo o Archivos pulsa Compartir y elige Labless.",
   },
   report: {
     stages: {

@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api";
 import { useMembers } from "@/lib/data";
 import { useSelectedMember } from "@/lib/selected";
 import { MAX_PAGES, PermissionError, pickFromCamera, pickFromLibrary, pickPdf, submitReport, type Page } from "@/lib/upload";
+import { useSharedFiles } from "@/lib/share";
 import { colors, fonts, radius } from "@/lib/theme";
 
 export default function Upload() {
@@ -27,6 +28,16 @@ export default function Upload() {
   useEffect(() => {
     if (!memberId && selected) setMemberId(selected.id);
   }, [selected, memberId]);
+
+  // Files shared from WhatsApp, Mail, Files or Photos land here as ready pages.
+  const [fromShare, setFromShare] = useState(false);
+  useSharedFiles(
+    (incoming) => {
+      setFromShare(true);
+      setPages((p) => [...p, ...incoming].slice(0, MAX_PAGES));
+    },
+    () => toast(t.upload.shareUnsupported, "error"),
+  );
 
   const room = MAX_PAGES - pages.length;
   const add = async (source: "camera" | "gallery" | "pdf") => {
@@ -114,6 +125,15 @@ export default function Upload() {
           </Pressable>
         </ScrollView>
 
+        {fromShare ? (
+          <View style={styles.sharedNote}>
+            <Feather name="share" size={16} color={colors.pen} />
+            <T v="small" style={{ flex: 1, color: colors.ink }}>
+              {t.upload.shared}
+            </T>
+          </View>
+        ) : null}
+
         <View style={styles.sources}>
           <Source icon="camera" label={t.upload.camera} onPress={() => add("camera")} disabled={busy} />
           <Source icon="image" label={t.upload.gallery} onPress={() => add("gallery")} disabled={busy} />
@@ -161,6 +181,12 @@ export default function Upload() {
             <T v="hand" style={{ fontSize: 26 }}>
               {t.upload.tipTitle}
             </T>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Text style={{ fontFamily: fonts.hand, fontSize: 20, color: colors.pen }}>↗</Text>
+              <T v="small" style={{ flex: 1 }}>
+                {t.upload.shareTip}
+              </T>
+            </View>
             {t.upload.tips.map((tip) => (
               <View key={tip} style={{ flexDirection: "row", gap: 10 }}>
                 <Text style={{ fontFamily: fonts.hand, fontSize: 20, color: colors.pen }}>✓</Text>
@@ -264,6 +290,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(18,18,18,0.75)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  sharedNote: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    marginTop: 18,
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.penSoft,
   },
   tips: { marginTop: 26, gap: 10, padding: 18, borderRadius: radius.lg, backgroundColor: colors.paper2 },
 });

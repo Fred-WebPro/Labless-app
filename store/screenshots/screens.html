@@ -410,6 +410,11 @@ async function main() {
     root.appendChild(card);
     layout(card, i);
     drawMarks(card);
+    // App Store Connect takes 1206 x 2622 for iPhones with Dynamic Island; the design is drawn at 1320 x 2868.
+    if (P.get("size") === "6.3") {
+      card.style.transformOrigin = "0 0";
+      card.style.transform = `scale(${1206 / 1320}, ${2622 / 2868})`;
+    }
   } else {
     const g = Number(P.get("g") || 0.22);
     const wrap = document.createElement("div");

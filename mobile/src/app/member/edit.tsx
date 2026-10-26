@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from "react-native";
+import { BodyForm } from "@/components/Body";
 import { DateField } from "@/components/DateField";
 import { useToast } from "@/components/Toast";
 import { Avatar, Button, Choice, Field, Header, Loading, Screen, T, tap } from "@/components/ui";
@@ -194,6 +195,12 @@ function Form({ member }: { member?: Member }) {
               ))}
             </View>
           </View>
+          {member ? (
+            <View style={{ gap: 10 }}>
+              <T v="h3">{t.body.title}</T>
+              <BodyForm member={member} saveLabel={t.body.saveOnly} onSaved={() => toast(t.memberEdit.saved)} />
+            </View>
+          ) : null}
         </View>
       </Screen>
     </KeyboardAvoidingView>

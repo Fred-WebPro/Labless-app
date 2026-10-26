@@ -90,7 +90,7 @@ export function InsightsPreview({ scope, memberId, title }: { scope: "member" | 
   return (
     <Card style={styles.card}>
       <T v="caption">{title}</T>
-      {data.headline ? <T v="handLarge" style={{ fontSize: 26, lineHeight: 28 }}>{data.headline}</T> : null}
+      {data.headline ? <T v="h3" style={{ color: colors.pen }}>{data.headline}</T> : null}
       {data.items.slice(0, 2).map((x, i) => (
         <InsightCard key={i} item={x} />
       ))}

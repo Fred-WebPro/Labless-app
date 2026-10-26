@@ -66,7 +66,7 @@ export default function Profile() {
   };
 
   return (
-    <Screen padded={false}>
+    <Screen safeTop padded={false}>
       <View style={{ paddingTop: insets.top + 18, paddingHorizontal: 20, gap: 4 }}>
         <T v="title">{t.profile.title}</T>
         <T v="body" numberOfLines={1}>
@@ -126,6 +126,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.rule,
     overflow: "hidden",
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
   },
 });

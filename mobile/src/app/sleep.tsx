@@ -1,14 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
-import { RefreshControl, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Linking, RefreshControl, StyleSheet, View } from "react-native";
 import { confirm } from "@/components/confirm";
 import { SleepBars, SleepCard, hm, useSleepConnected } from "@/components/Sleep";
 import { Button, Card, Empty, Header, Screen, T } from "@/components/ui";
 import { fill, formatDate, useI18n } from "@/i18n";
 import { keys, useSleepNights } from "@/lib/data";
 import { useSelectedMember } from "@/lib/selected";
-import { disconnectSleep, sleepStats, sleepSupported, syncSleep } from "@/lib/sleep";
+import { disconnectSleep, lastSleepSamples, sleepStats, sleepSupported, syncSleep } from "@/lib/sleep";
 import { colors } from "@/lib/theme";
 
 /** Sleep from Apple Health: 30-night averages, the nightly chart and how it feeds the reading. */
@@ -19,12 +19,17 @@ export default function SleepScreen() {
   const [connected, setConnected] = useSleepConnected();
   const nights = useSleepNights(!!connected);
   const [refreshing, setRefreshing] = useState(false);
+  const [samples, setSamples] = useState<number | null>(null);
+  useEffect(() => {
+    lastSleepSamples().then(setSamples);
+  }, [connected]);
   const back = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   const refresh = async () => {
     setRefreshing(true);
     await syncSleep(true);
     await nights.refetch();
+    setSamples(await lastSleepSamples());
     setRefreshing(false);
   };
 
@@ -50,6 +55,16 @@ export default function SleepScreen() {
           </View>
         ) : (
           <>
+            {nights.isSuccess && !nights.data?.length ? (
+              <Card style={{ gap: 10, marginBottom: 14, backgroundColor: colors.penTint, borderColor: colors.penSoft }}>
+                <T v="h3">{t.sleep.noRecordsTitle}</T>
+                <T v="small">{samples ? t.sleep.shortRecordsBody : t.sleep.noRecordsBody}</T>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <Button small kind="ink" icon="refresh-cw" label={t.sleep.syncNow} onPress={refresh} loading={refreshing} style={{ flex: 1 }} />
+                  <Button small kind="ghost" icon="heart" label={t.sleep.openHealth} onPress={() => Linking.openURL("x-apple-health://").catch(() => {})} style={{ flex: 1 }} />
+                </View>
+              </Card>
+            ) : null}
             <View style={styles.stats}>
               <Stat value={hm(stats.avgAsleep, t.sleep)} label={t.sleep.avg} />
               <Stat value={stats.avgBedtime ?? "—"} label={t.sleep.bedtime} />

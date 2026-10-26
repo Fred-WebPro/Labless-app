@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 18,
     color: colors.ink,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
   },
   err: { borderColor: colors.pen },
 });

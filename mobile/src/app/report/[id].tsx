@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { BodyPrompt, hasBody } from "@/components/Body";
 import { confirm } from "@/components/confirm";
 import { PenUnderline } from "@/components/Pen";
 import { AdviceCard, Checkin, DeltaRow, FindingCard, HiddenTestCard, IndexRow, ResultRow, StatusBadge, StepCard, directionColor } from "@/components/report";
@@ -89,6 +90,20 @@ export default function ReportScreen() {
     try {
       await api("/api/checkin", { body: { reportId: id, answers } });
       track("checkin_submitted", { report_id: id, answers: Object.keys(answers).length });
+      wasProcessing.current = true;
+      await report.refetch();
+    } catch {
+      setRefining(false);
+      toast(t.common.genericError, "error");
+    }
+  };
+
+  /** Height and weight were just added: recompute the indices and the reading with them. */
+  const bodySaved = async () => {
+    setRefining(true);
+    try {
+      await api("/api/reanalyze", { body: { reportId: id } });
+      track("body_added", { report_id: id });
       wasProcessing.current = true;
       await report.refetch();
     } catch {
@@ -279,6 +294,11 @@ export default function ReportScreen() {
             {a.findings.map((f, i) => (
               <FindingCard key={i} finding={f} />
             ))}
+            {member && !hasBody(member) && !refining && !processing ? (
+              <View style={{ marginTop: 10 }}>
+                <BodyPrompt member={member} onSaved={bodySaved} />
+              </View>
+            ) : null}
             {a.indices?.length ? (
               <>
                 <SectionTitle title={t.report.indices} />

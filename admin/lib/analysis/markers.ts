@@ -134,5 +134,6 @@ export const HIDDEN_TEST_IDS = [
   "heart",
   "inflammation",
   "bioage",
+  "obesity",
   "smoking",
 ] as const;

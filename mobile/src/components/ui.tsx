@@ -48,6 +48,9 @@ const variants: Record<Variant, TextStyle> = {
   handLarge: { fontFamily: fonts.hand, fontSize: 32, lineHeight: 34, color: colors.pen },
 };
 
+const HAND_MAX = 24;
+const handFallback: TextStyle = { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 };
+
 export function T({
   v = "body",
   style,
@@ -61,8 +64,10 @@ export function T({
   numberOfLines?: number;
   selectable?: boolean;
 }) {
+  // The handwriting face is for a few words. Longer text in it is hard to read, so it falls back to the text face in the same pen color.
+  const longHand = (v === "hand" || v === "handLarge") && typeof children === "string" && children.length > HAND_MAX;
   return (
-    <Text style={[variants[v], style]} numberOfLines={numberOfLines} selectable={selectable} maxFontSizeMultiplier={1.4}>
+    <Text style={[variants[v], style, longHand && handFallback]} numberOfLines={numberOfLines} selectable={selectable} maxFontSizeMultiplier={1.4}>
       {children}
     </Text>
   );
@@ -240,6 +245,7 @@ export function Screen({
   footer,
   background = colors.paper,
   contentStyle,
+  safeTop,
 }: {
   children: ReactNode;
   scroll?: boolean;
@@ -248,6 +254,8 @@ export function Screen({
   footer?: ReactNode;
   background?: ColorValue;
   contentStyle?: StyleProp<ViewStyle>;
+  /** For screens without a Header: keeps scrolled content from running under the clock, signal and battery. */
+  safeTop?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const pad = padded ? { paddingHorizontal: space.xl } : null;
@@ -266,6 +274,7 @@ export function Screen({
         <View style={[{ flex: 1 }, pad, contentStyle]}>{children}</View>
       )}
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>{footer}</View> : null}
+      {safeTop ? <View pointerEvents="none" style={[styles.statusBar, { height: insets.top, backgroundColor: background }]} /> : null}
     </View>
   );
 }
@@ -483,7 +492,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 17,
     color: colors.ink,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
   },
   choiceRow: { flexDirection: "row", gap: 8 },
   choice: {
@@ -503,8 +512,9 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: colors.paper,
   },
+  statusBar: { position: "absolute", top: 0, left: 0, right: 0 },
   card: {
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.rule,

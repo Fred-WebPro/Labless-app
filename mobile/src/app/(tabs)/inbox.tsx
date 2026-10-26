@@ -33,7 +33,7 @@ export default function Inbox() {
   };
 
   return (
-    <Screen refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
+    <Screen safeTop refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
       <View style={[styles.head, { paddingTop: insets.top + 18 }]}>
         <T v="title">{t.inbox.title}</T>
         {unread.length ? <LinkButton label={t.inbox.markAll} onPress={() => markRead.mutate(unread.map((n) => n.id))} color={colors.pen} /> : null}

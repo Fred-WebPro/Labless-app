@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 16,
     gap: 4,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
     transform: [{ rotate: "-2deg" }],
   },
   sheetRow: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.rule, paddingVertical: 8 },

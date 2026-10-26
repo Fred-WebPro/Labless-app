@@ -28,6 +28,11 @@ export type Member = {
   photo_path: string | null;
   /** Signed URL for photo_path, added by useMembers. */
   photo_url?: string | null;
+  /** Body measurements in metric; used for BMI, body fat and visceral fat indices. */
+  height_cm: number | null;
+  weight_kg: number | null;
+  waist_cm: number | null;
+  body_measured_at: string | null;
   created_at: string;
 };
 

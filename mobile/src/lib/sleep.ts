@@ -7,8 +7,19 @@ type HealthKit = typeof import("@kingstinct/react-native-healthkit");
 const SLEEP = "HKCategoryTypeIdentifierSleepAnalysis" as const;
 const CONNECTED = "labless.sleep.connected";
 const LAST_SYNC = "labless.sleep.lastSync";
+const LAST_SAMPLES = "labless.sleep.lastSamples";
 
-// Sleep stage values from HealthKit.
+/** How many raw sleep records Apple Health returned on the last sync; 0 means it shared nothing. */
+export async function lastSleepSamples(): Promise<number | null> {
+  try {
+    const v = await AsyncStorage.getItem(LAST_SAMPLES);
+    return v == null ? null : Number(v);
+  } catch {
+    return null;
+  }
+}
+
+// Sleep values from HealthKit: 0 in bed, 1 asleep (no stages), 2 awake, 3 core, 4 deep, 5 REM.
 const IN_BED = 0;
 const AWAKE = 2;
 const DEEP = 4;
@@ -52,43 +63,67 @@ export type Night = {
 
 const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+type Span = [number, number];
+
+/** Total minutes covered by the spans, counting overlaps once (a watch and a phone often record the same night). */
+function covered(spans: Span[]): number {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+  let total = 0;
+  let cur: Span | null = null;
+  for (const [s, e] of sorted) {
+    if (!cur || s > cur[1]) {
+      if (cur) total += cur[1] - cur[0];
+      cur = [s, e];
+    } else if (e > cur[1]) cur[1] = e;
+  }
+  if (cur) total += cur[1] - cur[0];
+  return total / 60000;
+}
+
 /**
  * Groups samples into nights. A night is named after the evening it started:
  * anything ending before 18:00 belongs to the previous evening.
+ * Without a watch, iPhone records only "in bed" from the sleep schedule; that time is used as sleep then.
  */
-function toNights(samples: readonly { startDate: Date; endDate: Date; value: number }[]): Night[] {
-  const byNight = new Map<string, { asleep: number; inBed: number; deep: number; rem: number; awake: number; start: Date | null; end: Date | null; stages: boolean }>();
+function toNights(samples: readonly { startDate: Date | string; endDate: Date | string; value: number }[]): Night[] {
+  const byNight = new Map<string, { asleep: Span[]; inBed: Span[]; deep: Span[]; rem: Span[]; awake: Span[] }>();
   for (const s of samples) {
-    const start = new Date(s.startDate);
-    const end = new Date(s.endDate);
-    const min = Math.max(0, (end.getTime() - start.getTime()) / 60000);
-    const anchor = new Date(end.getTime() - 18 * 3600_000);
-    const key = localDate(anchor);
-    const n = byNight.get(key) ?? { asleep: 0, inBed: 0, deep: 0, rem: 0, awake: 0, start: null, end: null, stages: false };
-    if (s.value === IN_BED) n.inBed += min;
-    else if (s.value === AWAKE) n.awake += min;
+    const start = new Date(s.startDate).getTime();
+    const end = new Date(s.endDate).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+    const key = localDate(new Date(end - 18 * 3600_000));
+    const n = byNight.get(key) ?? { asleep: [], inBed: [], deep: [], rem: [], awake: [] };
+    const span: Span = [start, end];
+    const v = Number(s.value);
+    if (v === IN_BED) n.inBed.push(span);
+    else if (v === AWAKE) n.awake.push(span);
     else {
-      n.asleep += min;
-      if (s.value === DEEP) n.deep += min;
-      if (s.value === REM) n.rem += min;
-      if (s.value >= 3) n.stages = true;
-      if (!n.start || start < n.start) n.start = start;
-      if (!n.end || end > n.end) n.end = end;
+      n.asleep.push(span);
+      if (v === DEEP) n.deep.push(span);
+      if (v === REM) n.rem.push(span);
     }
     byNight.set(key, n);
   }
   return [...byNight.entries()]
-    .filter(([, n]) => n.asleep >= 60)
-    .map(([night, n]) => ({
-      night,
-      asleep_min: Math.min(1440, Math.round(n.asleep)),
-      in_bed_min: n.inBed ? Math.round(n.inBed) : null,
-      bedtime: n.start?.toISOString() ?? null,
-      wake_time: n.end?.toISOString() ?? null,
-      deep_min: n.stages ? Math.round(n.deep) : null,
-      rem_min: n.stages ? Math.round(n.rem) : null,
-      awake_min: n.stages ? Math.round(n.awake) : null,
-    }))
+    .map(([night, n]) => {
+      const staged = n.deep.length > 0 || n.rem.length > 0;
+      const asleepSpans = n.asleep.length ? n.asleep : n.inBed;
+      const asleep = covered(asleepSpans);
+      const inBed = covered(n.inBed);
+      const start = asleepSpans.length ? Math.min(...asleepSpans.map((x) => x[0])) : null;
+      const end = asleepSpans.length ? Math.max(...asleepSpans.map((x) => x[1])) : null;
+      return {
+        night,
+        asleep_min: Math.min(1440, Math.round(asleep)),
+        in_bed_min: inBed ? Math.round(inBed) : null,
+        bedtime: start ? new Date(start).toISOString() : null,
+        wake_time: end ? new Date(end).toISOString() : null,
+        deep_min: staged ? Math.round(covered(n.deep)) : null,
+        rem_min: staged ? Math.round(covered(n.rem)) : null,
+        awake_min: staged ? Math.round(covered(n.awake)) : null,
+      };
+    })
+    .filter((n) => n.asleep_min >= 60)
     .sort((a, b) => a.night.localeCompare(b.night));
 }
 
@@ -130,11 +165,14 @@ export async function syncSleep(force = false): Promise<number> {
     const userId = data.session?.user.id;
     if (!userId) return 0;
 
+    // Shows the Health permission sheet again only if the person never answered it; otherwise a no-op.
+    if (force) await hk.requestAuthorization({ toRead: [SLEEP] }).catch(() => false);
     const samples = await hk.queryCategorySamples(SLEEP, {
       limit: 0,
       filter: { date: { startDate: new Date(Date.now() - 45 * 86400_000), endDate: new Date() } },
     });
     const nights = toNights(samples as unknown as { startDate: Date; endDate: Date; value: number }[]);
+    await AsyncStorage.setItem(LAST_SAMPLES, String(samples.length));
     if (nights.length) {
       const rows = nights.map((n) => ({ ...n, owner_id: userId, source: "apple_health", updated_at: new Date().toISOString() }));
       const { error } = await supabase.from("sleep_nights").upsert(rows, { onConflict: "owner_id,night" });

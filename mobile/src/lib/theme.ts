@@ -3,6 +3,8 @@ import { DynamicColorIOS, Platform, useColorScheme, type ColorValue } from "reac
 /** Labless visual system: clinical white paper, black ink, one red pen. At night: dark paper, light ink, the same pen. */
 const light = {
   paper: "#FFFFFF",
+  /** Raised surfaces: cards, inputs, sheets. In light mode the same white as the page; in dark mode one step lighter. */
+  card: "#FFFFFF",
   paper2: "#F6F6F3",
   paper3: "#EEEEEA",
   rule: "#E6E6E1",
@@ -25,25 +27,27 @@ const light = {
 };
 
 const dark: typeof light = {
-  paper: "#0F0F0E",
-  paper2: "#1B1B19",
-  paper3: "#262623",
-  rule: "#2B2B28",
-  ruleStrong: "#3E3E3A",
-  ink: "#F1F1EC",
-  ink2: "#BDBDB5",
-  ink3: "#8C8C84",
-  onInk: "#121212",
-  onInkMuted: "rgba(18,18,18,0.6)",
-  pen: "#E8483C",
-  penSoft: "#3B1714",
-  penTint: "#1F1311",
-  penDeep: "#FF7A6E",
-  good: "#4CBF85",
-  goodSoft: "#13301F",
-  warn: "#DDA842",
-  warnSoft: "#33280F",
-  overlay: "rgba(0,0,0,0.6)",
+  // Neutral near-black like iOS: the page is darkest, every raised layer is lighter, never the reverse.
+  paper: "#0B0B0C",
+  card: "#1A1A1C",
+  paper2: "#242427",
+  paper3: "#303034",
+  rule: "#323236",
+  ruleStrong: "#4A4A50",
+  ink: "#F5F5F2",
+  ink2: "#D2D2CC",
+  ink3: "#A0A09A",
+  onInk: "#0B0B0C",
+  onInkMuted: "rgba(11,11,12,0.6)",
+  pen: "#FF5A4E",
+  penSoft: "#45201C",
+  penTint: "#241311",
+  penDeep: "#FF8D84",
+  good: "#5FD094",
+  goodSoft: "#163524",
+  warn: "#F4B95A",
+  warnSoft: "#3D2E12",
+  overlay: "rgba(0,0,0,0.7)",
 };
 
 export type Palette = typeof light;

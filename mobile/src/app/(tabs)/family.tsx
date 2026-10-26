@@ -32,7 +32,7 @@ export default function Family() {
   };
 
   return (
-    <Screen refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
+    <Screen safeTop refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
       <View style={[styles.head, { paddingTop: insets.top + 18 }]}>
         <View style={{ flex: 1, gap: 4 }}>
           <T v="title">{t.family.title}</T>

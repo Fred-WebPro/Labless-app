@@ -58,7 +58,7 @@ export default function Home() {
   };
 
   return (
-    <Screen refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
+    <Screen safeTop refresh={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.ink} />}>
       <View style={{ paddingTop: insets.top + 18, gap: 4 }}>
         <T v="title">{fill(t.home.hello, { name: firstName || "👋" })}</T>
         <T v="body">{t.home.subtitle}</T>
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.rule,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.card,
   },
   chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontFamily: fonts.medium, fontSize: 14, color: colors.ink, maxWidth: 120 },

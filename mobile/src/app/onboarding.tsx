@@ -69,7 +69,7 @@ export default function Onboarding() {
 
   if (step === 2) {
     return (
-      <Screen
+      <Screen safeTop
         footer={
           <>
             <Button label={t.onboarding.addFamily} kind="pen" icon="user-plus" onPress={() => finish(true)} loading={updateProfile.isPending} />
@@ -90,7 +90,7 @@ export default function Onboarding() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <Screen footer={<Button label={t.onboarding.finish} kind="ink" onPress={saveSelf} loading={saveMember.isPending} testID="onboarding-continue" />}>
+      <Screen safeTop footer={<Button label={t.onboarding.finish} kind="ink" onPress={saveSelf} loading={saveMember.isPending} testID="onboarding-continue" />}>
         <View style={{ paddingTop: insets.top + 24, gap: 10, marginBottom: 26 }}>
           <T v="caption">1 / 2</T>
           <T v="title">{t.onboarding.title}</T>

@@ -37,7 +37,7 @@ export default function InsightsScreen() {
         ) : (
           <>
             {data.headline ? (
-              <T v="handLarge" style={{ fontSize: 30, lineHeight: 32, marginTop: 6 }}>
+              <T v="h2" style={{ color: colors.pen, marginTop: 6 }}>
                 {data.headline}
               </T>
             ) : null}

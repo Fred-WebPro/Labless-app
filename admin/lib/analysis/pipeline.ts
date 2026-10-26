@@ -113,7 +113,12 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
     for (const r of results ?? []) {
       if (r.value != null && markerByKey.has(r.marker)) values[r.marker] = Number(r.value);
     }
-    const indices = computeIndices(values, { age, sex });
+    const body = {
+      heightCm: member?.height_cm != null ? Number(member.height_cm) : null,
+      weightKg: member?.weight_kg != null ? Number(member.weight_kg) : null,
+      waistCm: member?.waist_cm != null ? Number(member.waist_cm) : null,
+    };
+    const indices = computeIndices(values, { age, sex, ...body });
 
     const { data: history } = await db
       .from("results")
@@ -133,7 +138,14 @@ export async function runAnalysis(reportId: string, opts: { reinterpretOnly?: bo
     await setStage(reportId, "interpreting");
     const result = await interpret({
       locale,
-      person: { age, sex, relation: member?.relation ?? "self" },
+      person: {
+        age,
+        sex,
+        relation: member?.relation ?? "self",
+        height_cm: body.heightCm,
+        weight_kg: body.weightKg,
+        waist_cm: body.waistCm,
+      },
       collectedAt,
       results: (results ?? []).map((r) => ({
         marker: r.marker,

@@ -15,7 +15,13 @@ export type IndexResult = {
   source: string;
 };
 
-export type Person = { age: number | null; sex: "male" | "female" | null };
+export type Person = {
+  age: number | null;
+  sex: "male" | "female" | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  waistCm?: number | null;
+};
 
 const round = (v: number, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
 const has = (v: Record<string, number>, ...keys: string[]) => keys.every((k) => Number.isFinite(v[k]) && v[k] > 0);
@@ -265,6 +271,114 @@ export function computeIndices(v: Record<string, number>, person: Person): Index
         });
       }
     }
+  }
+
+  out.push(...bodyIndices(v, person));
+  return out;
+}
+
+/** Indices that need height, weight or waist. Each one appears only when its inputs exist. */
+function bodyIndices(v: Record<string, number>, person: Person): IndexResult[] {
+  const out: IndexResult[] = [];
+  const { age, sex } = person;
+  const h = person.heightCm && person.heightCm > 0 ? person.heightCm : null;
+  const w = person.weightKg && person.weightKg > 0 ? person.weightKg : null;
+  const waist = person.waistCm && person.waistCm > 0 ? person.waistCm : null;
+  const bmi = h && w ? w / (h / 100) ** 2 : null;
+
+  if (bmi) {
+    out.push({
+      key: "bmi",
+      name: "Body mass index (BMI)",
+      value: round(bmi, 1),
+      unit: "kg/m²",
+      status: bmi >= 30 ? "high" : bmi >= 25 ? "borderline" : bmi < 18.5 ? "low" : "normal",
+      reference: "18.5–24.9 normal · 25–29.9 overweight · 30–34.9 obesity class I · 35–39.9 class II · ≥ 40 class III",
+      inputs: ["height", "weight"],
+      source: "WHO 2000, Technical Report Series 894",
+    });
+
+    if (age && sex && age >= 18) {
+      // CUN-BAE: body fat from BMI, age and sex, validated against air-displacement plethysmography.
+      const s = sex === "female" ? 1 : 0;
+      const fat =
+        -44.988 + 0.503 * age + 10.689 * s + 3.172 * bmi - 0.026 * bmi ** 2 + 0.181 * bmi * s - 0.02 * bmi * age - 0.005 * bmi ** 2 * s + 0.00021 * bmi ** 2 * age;
+      const [hi, mid] = sex === "female" ? [35, 30] : [25, 20];
+      out.push({
+        key: "body_fat",
+        name: "Estimated body fat (CUN-BAE)",
+        value: round(fat, 1),
+        unit: "%",
+        status: fat >= hi ? "high" : fat >= mid ? "borderline" : "normal",
+        reference: sex === "female" ? "< 30% healthy · 30–35% raised · ≥ 35% obesity range" : "< 20% healthy · 20–25% raised · ≥ 25% obesity range",
+        inputs: ["height", "weight", "age", "sex"],
+        source: "Gómez-Ambrosi 2012, Diabetes Care",
+      });
+    }
+
+    if (has(v, "tg", "glucose")) {
+      const tygBmi = Math.log((v.tg * v.glucose) / 2) * bmi;
+      out.push({
+        key: "tyg_bmi",
+        name: "TyG-BMI",
+        value: round(tygBmi, 0),
+        unit: "",
+        status: tygBmi >= 250 ? "high" : tygBmi >= 213 ? "borderline" : "normal",
+        reference: "Higher means more insulin resistance · ≥ 250 high in most studies",
+        inputs: ["tg", "glucose", "height", "weight"],
+        source: "Er 2016, PLoS One",
+      });
+    }
+  }
+
+  if (waist && h) {
+    const whtr = waist / h;
+    out.push({
+      key: "whtr",
+      name: "Waist-to-height ratio",
+      value: round(whtr, 2),
+      unit: "",
+      status: whtr >= 0.6 ? "high" : whtr >= 0.5 ? "borderline" : "normal",
+      reference: "< 0.5 healthy · 0.5–0.59 central fat raised · ≥ 0.6 high",
+      inputs: ["waist", "height"],
+      source: "Ashwell 2012, Obes Rev; NICE 2022",
+    });
+  }
+
+  if (waist && sex && has(v, "tg")) {
+    const tgMmol = v.tg / 88.57;
+    const lap = (waist - (sex === "female" ? 58 : 65)) * tgMmol;
+    if (lap > 0) {
+      out.push({
+        key: "lap",
+        name: "Lipid accumulation product (LAP)",
+        value: round(lap, 1),
+        unit: "",
+        status: lap >= (sex === "female" ? 45 : 50) ? "high" : lap >= (sex === "female" ? 30 : 35) ? "borderline" : "normal",
+        reference: sex === "female" ? "< 30 typical · ≥ 45 visceral fat likely" : "< 35 typical · ≥ 50 visceral fat likely",
+        inputs: ["waist", "tg", "sex"],
+        source: "Kahn 2005, BMC Cardiovasc Disord",
+      });
+    }
+  }
+
+  if (waist && bmi && sex && has(v, "tg", "hdl")) {
+    const tg = v.tg / 88.57;
+    const hdl = v.hdl / 38.67;
+    const vai =
+      sex === "female"
+        ? (waist / (36.58 + 1.89 * bmi)) * (tg / 0.81) * (1.52 / hdl)
+        : (waist / (39.68 + 1.88 * bmi)) * (tg / 1.03) * (1.31 / hdl);
+    out.push({
+      key: "vai",
+      name: "Visceral adiposity index (VAI)",
+      value: round(vai, 2),
+      unit: "",
+      status: vai >= 2.5 ? "high" : vai >= 1.9 ? "borderline" : "normal",
+      reference: "≈ 1 healthy · ≥ 1.9 raised · ≥ 2.5 visceral fat dysfunction likely",
+      inputs: ["waist", "height", "weight", "tg", "hdl", "sex"],
+      source: "Amato 2010, Diabetes Care",
+    });
   }
 
   return out;

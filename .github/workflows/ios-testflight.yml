@@ -15,7 +15,7 @@ concurrency:
 jobs:
   ios:
     runs-on: macos-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: mobile

@@ -119,6 +119,12 @@
         "projectId": "71d164e5-d607-4ccd-9347-7f23548462cf"
       }
     },
-    "owner": "fredmmow"
+    "owner": "fredmmow",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/71d164e5-d607-4ccd-9347-7f23548462cf"
+    }
   }
 }

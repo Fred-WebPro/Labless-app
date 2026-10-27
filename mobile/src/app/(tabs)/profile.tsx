@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { setAiConsent } from "@/components/AiConsent";
 import { confirm } from "@/components/confirm";
 import { Wordmark } from "@/components/Pen";
 import { useToast } from "@/components/Toast";
@@ -9,7 +10,10 @@ import { Choice, Row, Screen, T, Toggle } from "@/components/ui";
 import { LOCALES, fill, useI18n, type Locale } from "@/i18n";
 import { api } from "@/lib/api";
 import { appVersion, track } from "@/lib/analytics";
-import { useProfile, useUpdateProfile } from "@/lib/data";
+import { useQueryClient } from "@tanstack/react-query";
+import { setThemePref, useThemePref, type ThemePref } from "@/lib/appearance";
+import { keys, useProfile, useUpdateProfile } from "@/lib/data";
+import { openLegal } from "@/lib/legal";
 import { disablePush, registerPush } from "@/lib/push";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -21,6 +25,19 @@ export default function Profile() {
   const { data: profile } = useProfile();
   const update = useUpdateProfile();
   const [deleting, setDeleting] = useState(false);
+  const theme = useThemePref();
+  const qc = useQueryClient();
+
+  const toggleAi = async (on: boolean) => {
+    if (!profile) return;
+    try {
+      await setAiConsent(profile.id, on);
+      track(on ? "ai_consent_given" : "ai_consent_withdrawn");
+      await qc.invalidateQueries({ queryKey: keys.profile });
+    } catch {
+      toast(t.common.genericError, "error");
+    }
+  };
 
   const changeLocale = (l: Locale) => {
     setLocale(l);
@@ -82,6 +99,24 @@ export default function Profile() {
       </View>
 
       <T v="caption" style={styles.group}>
+        {t.profile.appearance.toUpperCase()}
+      </T>
+      <View style={{ paddingHorizontal: 20 }}>
+        <Choice<ThemePref>
+          value={theme}
+          onChange={(v) => {
+            setThemePref(v);
+            track("theme_changed", { theme: v });
+          }}
+          options={[
+            { value: "system", label: t.profile.themeSystem },
+            { value: "light", label: t.profile.themeLight },
+            { value: "dark", label: t.profile.themeDark },
+          ]}
+        />
+      </View>
+
+      <T v="caption" style={styles.group}>
         {t.profile.notifications.toUpperCase()}
       </T>
       <View style={styles.box}>
@@ -98,11 +133,23 @@ export default function Profile() {
       </T>
 
       <T v="caption" style={styles.group}>
+        {t.profile.aiAnalysis.toUpperCase()}
+      </T>
+      <View style={styles.box}>
+        <Row icon="cpu" label={t.profile.aiAnalysis} right={<Toggle value={!!profile?.ai_consent_at} onChange={toggleAi} label={t.profile.aiAnalysis} />} />
+      </View>
+      <T v="caption" style={{ paddingHorizontal: 20, marginTop: 6 }}>
+        {t.profile.aiAnalysisBody}
+      </T>
+
+      <T v="caption" style={styles.group}>
         {t.profile.account.toUpperCase()}
       </T>
       <View style={styles.box}>
         <Row icon="users" label={t.family.title} onPress={() => router.push("/family")} />
-        <Row icon="shield" label={t.profile.legal} onPress={() => router.push("/legal")} />
+        <Row icon="info" label={t.profile.legal} onPress={() => router.push("/legal")} />
+        <Row icon="shield" label={t.profile.privacyPolicy} onPress={() => openLegal("privacy", locale)} />
+        <Row icon="file-text" label={t.profile.terms} onPress={() => openLegal("terms", locale)} />
         <Row icon="log-out" label={t.profile.signOut} onPress={signOut} />
         <Row icon="trash-2" label={deleting ? t.common.loading : t.profile.deleteAccount} onPress={deleting ? undefined : deleteAccount} danger />
       </View>

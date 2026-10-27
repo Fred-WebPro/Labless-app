@@ -31,6 +31,12 @@ export async function isBanned(userId: string): Promise<boolean> {
   return !!data?.banned_at;
 }
 
+/** The person agreed in the app that reports go to the external AI provider. Required before any analysis. */
+export async function hasAiConsent(userId: string): Promise<boolean> {
+  const { data } = await adminDb().from("profiles").select("ai_consent_at").eq("id", userId).maybeSingle();
+  return !!data?.ai_consent_at;
+}
+
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
     .split(",")

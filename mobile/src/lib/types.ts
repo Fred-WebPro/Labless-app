@@ -9,6 +9,8 @@ export type Profile = {
   role: string;
   onboarded: boolean;
   notifications_enabled: boolean;
+  /** When the person agreed that reports are processed by the external AI provider; null = not yet. */
+  ai_consent_at: string | null;
   banned_at: string | null;
   created_at: string;
 };

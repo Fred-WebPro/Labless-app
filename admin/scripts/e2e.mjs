@@ -84,7 +84,7 @@ try {
   // ---------- Profile column guard ----------
   const { error: roleErr } = await a.client.from("profiles").update({ role: "admin" }).eq("id", a.user.id);
   ok(!!roleErr, "client can't promote itself to admin");
-  const { error: upErr } = await a.client.from("profiles").update({ onboarded: true, platform: "ios", last_seen_at: new Date().toISOString() }).eq("id", a.user.id);
+  const { error: upErr } = await a.client.from("profiles").update({ onboarded: true, platform: "ios", last_seen_at: new Date().toISOString(), ai_consent_at: new Date().toISOString() }).eq("id", a.user.id);
   ok(!upErr, "client updates allowed profile fields", upErr?.message);
 
   // ---------- Members ----------

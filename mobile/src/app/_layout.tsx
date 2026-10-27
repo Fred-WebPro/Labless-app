@@ -22,9 +22,12 @@ import { SelectedMemberProvider } from "@/lib/selected";
 import { hasPendingShare } from "@/lib/share";
 import { openTarget } from "@/lib/notify";
 import { syncSleep } from "@/lib/sleep";
+import { loadThemePref } from "@/lib/appearance";
 import { colors } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { Button, T } from "@/components/ui";
+// Apply the saved light/dark choice before the first screen draws.
+loadThemePref();
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

@@ -1,12 +1,13 @@
 import { router } from "expo-router";
 import { useRef, useState, type ComponentRef } from "react";
-import { KeyboardAvoidingView, Platform, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button, Field, Header, LinkButton, Screen, T } from "@/components/ui";
 import { useI18n } from "@/i18n";
 import { ApiError, api } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { openLegal } from "@/lib/legal";
 import { supabase } from "@/lib/supabase";
-import { colors } from "@/lib/theme";
+import { colors, fonts } from "@/lib/theme";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -111,9 +112,24 @@ export default function SignUp() {
               {errors.form}
             </T>
           ) : null}
-          <T v="caption">{t.auth.terms}</T>
+          <Text style={styles.terms}>
+            {t.auth.terms}{" "}
+            <Text style={styles.termsLink} onPress={() => openLegal("terms", locale)}>
+              {t.legalLinks.terms}
+            </Text>{" "}
+            {t.auth.termsAnd}{" "}
+            <Text style={styles.termsLink} onPress={() => openLegal("privacy", locale)}>
+              {t.legalLinks.privacy}
+            </Text>
+            . {t.auth.termsNote}
+          </Text>
         </View>
       </Screen>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  terms: { fontFamily: fonts.medium, fontSize: 12.5, lineHeight: 18, color: colors.ink3 },
+  termsLink: { color: colors.ink, textDecorationLine: "underline" },
+});

@@ -1,5 +1,5 @@
 import { refreshFamilyInsights, refreshMemberInsights } from "@/lib/analysis/insights";
-import { adminDb, isBanned, json, userFromRequest } from "@/lib/supabase";
+import { adminDb, hasAiConsent, isBanned, json, userFromRequest } from "@/lib/supabase";
 
 export const maxDuration = 300;
 
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   const user = await userFromRequest(req);
   if (!user) return json({ error: "unauthorized" }, 401);
   if (await isBanned(user.id)) return json({ error: "banned" }, 403);
+  if (!(await hasAiConsent(user.id))) return json({ error: "consent_required" }, 403);
 
   const body = (await req.json().catch(() => ({}))) as { memberId?: string; scope?: "member" | "family"; reason?: "sleep" };
   const scope = body.scope === "family" ? "family" : "member";

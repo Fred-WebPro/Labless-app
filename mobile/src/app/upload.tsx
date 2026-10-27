@@ -4,11 +4,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
+import { AiConsent } from "@/components/AiConsent";
 import { useToast } from "@/components/Toast";
 import { Avatar, Button, Header, Screen, T, tap } from "@/components/ui";
 import { fill, useI18n } from "@/i18n";
 import { ApiError } from "@/lib/api";
-import { useMembers } from "@/lib/data";
+import { useMembers, useProfile } from "@/lib/data";
 import { useSelectedMember } from "@/lib/selected";
 import { MAX_PAGES, PermissionError, pickFromCamera, pickFromLibrary, pickPdf, submitReport, type Page } from "@/lib/upload";
 import { useSharedFiles } from "@/lib/share";
@@ -20,6 +21,7 @@ export default function Upload() {
   const qc = useQueryClient();
   const params = useLocalSearchParams<{ memberId?: string }>();
   const { data: members } = useMembers();
+  const { data: profile } = useProfile();
   const { selected, select } = useSelectedMember();
   const [memberId, setMemberId] = useState<string | null>(params.memberId ?? selected?.id ?? null);
   const [pages, setPages] = useState<Page[]>([]);
@@ -68,13 +70,27 @@ export default function Upload() {
           ? t.common.networkError
           : err instanceof ApiError && err.code === "banned"
             ? t.auth.errors.banned
-            : t.common.genericError,
+            : err instanceof ApiError && err.code === "consent_required"
+              ? t.consent.later
+              : t.common.genericError,
         "error",
       );
     }
   };
 
   const busy = progress !== null;
+
+  // Nothing leaves the phone until the person agrees to AI processing.
+  if (profile && !profile.ai_consent_at) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.paper }}>
+        <Header title={t.upload.title} right={<Pressable hitSlop={10} onPress={() => router.back()}><Feather name="x" size={22} color={colors.ink} /></Pressable>} />
+        <Screen>
+          <AiConsent userId={profile.id} onDecline={() => router.back()} />
+        </Screen>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.paper }}>

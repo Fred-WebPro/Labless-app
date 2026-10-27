@@ -125,6 +125,11 @@ export function IndexRow({ index }: { index: IndexResult }) {
         <T v="caption" numberOfLines={2}>
           {reference}
         </T>
+        {index.source ? (
+          <T v="caption" numberOfLines={1} style={{ color: colors.ink3, fontStyle: "italic" }}>
+            {t.report.indexSource}: {index.source}
+          </T>
+        ) : null}
       </View>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
         <Text style={styles.indexValue}>

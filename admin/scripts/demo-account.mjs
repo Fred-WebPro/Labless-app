@@ -94,4 +94,6 @@ async function reading(file, collected) {
 }
 await reading(april, "2026-04-02");
 await reading(october, "2026-10-14");
+// The analyses above need consent; clear it so the reviewer meets the consent screen before the first upload.
+await client.from("profiles").update({ ai_consent_at: null }).eq("id", uid);
 console.log("demo account ready:", email, "(password in admin/.env.demo)");

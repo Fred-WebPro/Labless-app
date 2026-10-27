@@ -51,4 +51,4 @@ jobs:
           retention-days: 7
 
       - name: Upload to App Store Connect
-        run: eas submit --platform ios --profile production --path "$RUNNER_TEMP/labless.ipa" --non-interactive --wait
+        run: eas submit --platform ios --profile production --path "$RUNNER_TEMP/labless.ipa" --non-interactive

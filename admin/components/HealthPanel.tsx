@@ -57,7 +57,7 @@ export async function HealthPanel({ ownerId, members }: { ownerId: string; membe
         const analysis = analysisBy.get(latest.id);
         const findings = ((analysis?.findings ?? []) as Finding[]).slice().sort((a, b) => (SEVERITY[a.severity]?.rank ?? 9) - (SEVERITY[b.severity]?.rank ?? 9));
         const redFlags = (analysis?.red_flags ?? []) as string[];
-        const indices = ((analysis?.indices ?? []) as Index[]).filter((i) => i.status && i.status !== "normal");
+        const indices = ((analysis?.indices ?? []) as Index[]).filter((i) => i.status && i.status !== "normal" && i.status !== "optimal");
         const out = (resultsBy.get(latest.id) ?? []).filter((r) => abnormal(r.flag));
         const history = (marker: string) => list.slice(1).map((rep) => (resultsBy.get(rep.id) ?? []).find((r) => r.marker === marker)).filter((r): r is Result => !!r);
         const age = ageFrom(member.birth_date);

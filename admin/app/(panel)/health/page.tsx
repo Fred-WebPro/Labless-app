@@ -74,7 +74,7 @@ export default async function HealthStats() {
     for (const i of a.indices ?? []) {
       const v = indices.get(i.key) ?? { name: i.name, computed: 0, out: 0 };
       v.computed++;
-      if (i.status && i.status !== "normal") v.out++;
+      if (i.status && i.status !== "normal" && i.status !== "optimal") v.out++;
       indices.set(i.key, v);
     }
   const topIndices = [...indices.values()].filter((i) => i.out).sort((a, b) => b.out - a.out);

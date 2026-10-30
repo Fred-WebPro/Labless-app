@@ -2,8 +2,10 @@ import * as Application from "expo-application";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { getLocales } from "expo-localization";
+import * as Notifications from "expo-notifications";
 import * as Updates from "expo-updates";
 import { Platform } from "react-native";
+import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 const sessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -52,6 +54,7 @@ export function ping(locale: string) {
     try {
       const userId = await uid();
       if (!userId) return;
+      const push = Platform.OS === "web" ? null : await Notifications.getPermissionsAsync().then((p) => p.status).catch(() => null);
       await supabase
         .from("profiles")
         .update({
@@ -63,11 +66,15 @@ export function ping(locale: string) {
           device_region: getLocales()[0]?.regionCode ?? null,
           app_build: Application.nativeBuildVersion ?? null,
           update_id: Updates.updateId ?? null,
+          device_language: getLocales()[0]?.languageTag ?? null,
+          push_status: push,
           last_seen_at: new Date().toISOString(),
           locale,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
         })
         .eq("id", userId);
+      // The server reads the approximate location from the request.
+      await api("/api/ping").catch(() => {});
     } catch {
       // ignore
     }

@@ -14,11 +14,8 @@ export const maxDuration = 300;
 
 type Item = { at: string; kind: "event" | "admin" | "inbox" | "report"; text: string; detail?: string };
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ health?: string }> };
-
-export default async function UserDetail({ params, searchParams }: Props) {
+export default async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const showHealth = (await searchParams).health === "1";
   const db = adminDb();
   const { data: profile } = await db.from("profiles").select("*").eq("id", id).maybeSingle();
   if (!profile) notFound();
@@ -61,7 +58,8 @@ export default async function UserDetail({ params, searchParams }: Props) {
   const lastPlatform = (events ?? []).find((e) => e.platform && e.platform !== "server");
   const country = countryFromTimezone(profile.timezone);
   const region = countryFromCode(profile.device_region);
-  if (showHealth) await logAdmin((await requireAdmin()).id, id, "view_health");
+  await logAdmin((await requireAdmin()).id, id, "view_health");
+  const geo = countryFromCode(profile.geo_country);
 
   const timeline: Item[] = [
     ...(events ?? [])
@@ -123,37 +121,28 @@ export default async function UserDetail({ params, searchParams }: Props) {
       </div>
 
       <section className="card" id="health" style={{ marginTop: 14 }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0 }}>Здоровье</h2>
-          {showHealth ? (
-            <Link className="btn" href={`/users/${id}`}>
-              Скрыть
-            </Link>
-          ) : (
-            <Link className="btn btn--ink" href={`/users/${id}?health=1#health`}>
-              Показать
-            </Link>
-          )}
-        </div>
-        {showHealth ? (
-          <HealthPanel ownerId={id} members={members ?? []} />
-        ) : (
-          <p className="muted" style={{ margin: "8px 0 0" }}>
-            Находки, показатели вне нормы и их история по каждому члену семьи. Каждый просмотр записывается в журнал действий.
-          </p>
-        )}
+        <h2>Здоровье</h2>
+        <HealthPanel ownerId={id} members={members ?? []} />
       </section>
 
       <div className="grid grid--2" style={{ marginTop: 14 }}>
         <section className="card">
           <h2>Профиль</h2>
           <dl className="kv">
-            <dt>Страна</dt>
-            <dd>{country ? `${country.name} (часовой пояс ${profile.timezone})` : "—"}</dd>
+            <dt>Где находится</dt>
+            <dd>
+              {geo ? [profile.geo_city, profile.geo_region && profile.geo_region !== profile.geo_city ? profile.geo_region : null, geo.name].filter(Boolean).join(", ") : "—"}
+              {profile.geo_at ? <span className="muted"> · по IP, {ago(profile.geo_at)}</span> : null}
+            </dd>
+            <dt>Часовой пояс</dt>
+            <dd>{profile.timezone ? `${profile.timezone}${country ? ` (${country.name})` : ""}` : "—"}</dd>
             <dt>Регион в настройках</dt>
             <dd>{region?.name ?? "—"}</dd>
-            <dt>Язык приложения</dt>
-            <dd>{profile.locale}</dd>
+            <dt>Язык</dt>
+            <dd>
+              приложение {profile.locale}
+              {profile.device_language ? ` · телефон ${profile.device_language}` : ""}
+            </dd>
             <dt>Телефон</dt>
             <dd>{[profile.device_brand, profile.device_model].filter(Boolean).join(" ") || "—"}</dd>
             <dt>Система</dt>
@@ -171,7 +160,11 @@ export default async function UserDetail({ params, searchParams }: Props) {
             <dt>Последняя платформа</dt>
             <dd>{lastPlatform?.platform ?? "—"}</dd>
             <dt>Уведомления</dt>
-            <dd>{profile.notifications_enabled ? "включены" : "выключены"} · пуш-устройств {(tokens ?? []).filter((t) => !t.disabled).length}</dd>
+            <dd>
+              в приложении {profile.notifications_enabled ? "включены" : "выключены"} · разрешение iOS{" "}
+              {profile.push_status === "granted" ? "дано" : profile.push_status === "denied" ? "запрещено" : profile.push_status ? "не спрашивали" : "—"} · пуш-устройств{" "}
+              {(tokens ?? []).filter((t) => !t.disabled).length}
+            </dd>
             <dt>Регистрация</dt>
             <dd>{fmtDateTime(profile.created_at)}</dd>
             <dt>Последний вход</dt>

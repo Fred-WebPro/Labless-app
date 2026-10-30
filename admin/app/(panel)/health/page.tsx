@@ -1,19 +1,15 @@
+import Link from "next/link";
 import { HBars } from "@/components/Charts";
 import { ageFrom } from "@/lib/analysis/indices";
-import { markerByKey } from "@/lib/analysis/markers";
-import { countryFromTimezone } from "@/lib/country";
+import { countryFromCode, countryFromTimezone } from "@/lib/country";
 import { fetchAll } from "@/lib/fetchAll";
 import { fmtNum } from "@/lib/format";
+import { SEGMENTS, SEVERITY_LABEL, SEVERITY_ORDER, isOutFlag, isOutIndex, loadHealth } from "@/lib/health";
 import { adminDb } from "@/lib/supabase";
 
 export const maxDuration = 300;
 
-type Report = { id: string; member_id: string; collected_at: string | null; created_at: string };
-type Analysis = { report_id: string; findings: { severity: string }[]; red_flags: string[]; indices: { key: string; name: string; status: string }[] };
-type Result = { report_id: string; marker: string; name: string; flag: string | null };
-
-const SEVERITY_LABEL: Record<string, string> = { urgent: "Срочно", attention: "Внимание", watch: "Наблюдать", info: "Только информация", good: "Всё в норме" };
-const SEVERITY_ORDER = ["urgent", "attention", "watch", "info", "good"];
+type Profile = { id: string; geo_country: string | null; timezone: string | null; device_region: string | null; locale: string | null; device_model: string | null };
 
 const count = <T,>(items: T[], key: (item: T) => string | null | undefined) => {
   const m = new Map<string, number>();
@@ -25,60 +21,42 @@ const count = <T,>(items: T[], key: (item: T) => string | null | undefined) => {
 };
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "—");
 
-/** Health of all users in aggregate: no names, only counts over each person's latest ready reading. */
+/** Health of all users together, with segments that open the matching users. Counted over each person's latest ready reading. */
 export default async function HealthStats() {
   const db = adminDb();
-  const [profiles, members, reports, analyses] = await Promise.all([
-    fetchAll<{ id: string; timezone: string | null; locale: string | null }>((a, b) => db.from("profiles").select("id, timezone, locale").order("id").range(a, b)),
+  const [profiles, members, health] = await Promise.all([
+    fetchAll<Profile>((a, b) => db.from("profiles").select("id, geo_country, timezone, device_region, locale, device_model").order("id").range(a, b)),
     fetchAll<{ id: string; sex: string | null; birth_date: string | null }>((a, b) => db.from("members").select("id, sex, birth_date").order("id").range(a, b)),
-    fetchAll<Report>((a, b) => db.from("reports").select("id, member_id, collected_at, created_at").eq("status", "ready").order("id").range(a, b)),
-    fetchAll<Analysis>((a, b) => db.from("analyses").select("report_id, findings, red_flags, indices").order("report_id").range(a, b)),
+    loadHealth(),
   ]);
-
-  // Latest ready reading per person.
-  const latest = new Map<string, Report>();
-  const dateOf = (r: Report) => r.collected_at ?? r.created_at;
-  for (const r of reports) {
-    const have = latest.get(r.member_id);
-    if (!have || dateOf(r) > dateOf(have)) latest.set(r.member_id, r);
-  }
-  const latestIds = [...latest.values()].map((r) => r.id);
-  const results: Result[] = [];
-  for (let i = 0; i < latestIds.length; i += 100) {
-    const chunk = latestIds.slice(i, i + 100);
-    results.push(...(await fetchAll<Result>((a, b) => db.from("results").select("report_id, marker, name, flag").in("report_id", chunk).order("id").range(a, b))));
-  }
-
-  const people = members.filter((m) => latest.has(m.id));
+  const { people, byOwner } = health;
   const total = people.length;
-  const analysisBy = new Map(analyses.map((a) => [a.report_id, a]));
-  const latestAnalyses = latestIds.map((id) => analysisBy.get(id)).filter((a): a is Analysis => !!a);
+  const withRedFlags = people.filter((p) => p.redFlags).length;
+  const needsAttention = people.filter((p) => p.worst === "urgent" || p.worst === "attention").length;
 
-  const worst = latestAnalyses.map((a) => SEVERITY_ORDER.find((s) => (a.findings ?? []).some((f) => f.severity === s)) ?? "good");
-  const withRedFlags = latestAnalyses.filter((a) => (a.red_flags ?? []).length).length;
-  const needsAttention = worst.filter((s) => s === "urgent" || s === "attention").length;
-
-  // Out-of-range markers: share of people tested for the marker whose latest value is outside the range.
   const markers = new Map<string, { name: string; tested: number; high: number; low: number }>();
-  for (const r of results) {
-    const m = markers.get(r.marker) ?? { name: markerByKey.get(r.marker)?.name ?? r.name, tested: 0, high: 0, low: 0 };
-    m.tested++;
-    if (r.flag === "high" || r.flag === "critical_high") m.high++;
-    if (r.flag === "low" || r.flag === "critical_low") m.low++;
-    markers.set(r.marker, m);
-  }
-  const topMarkers = [...markers.values()].filter((m) => m.high + m.low).sort((a, b) => b.high + b.low - (a.high + a.low)).slice(0, 25);
+  for (const p of people)
+    for (const [key, t] of p.tested) {
+      const m = markers.get(key) ?? { name: t.name, tested: 0, high: 0, low: 0 };
+      m.tested++;
+      if (t.flag === "high" || t.flag === "critical_high") m.high++;
+      if (t.flag === "low" || t.flag === "critical_low") m.low++;
+      markers.set(key, m);
+    }
+  const topMarkers = [...markers.entries()].filter(([, m]) => m.high + m.low).sort((a, b) => b[1].high + b[1].low - (a[1].high + a[1].low));
 
   const indices = new Map<string, { name: string; computed: number; out: number }>();
-  for (const a of latestAnalyses)
-    for (const i of a.indices ?? []) {
+  for (const p of people)
+    for (const i of p.indices) {
       const v = indices.get(i.key) ?? { name: i.name, computed: 0, out: 0 };
       v.computed++;
-      if (i.status && i.status !== "normal" && i.status !== "optimal") v.out++;
+      if (isOutIndex(i.status)) v.out++;
       indices.set(i.key, v);
     }
-  const topIndices = [...indices.values()].filter((i) => i.out).sort((a, b) => b.out - a.out);
+  const topIndices = [...indices.entries()].filter(([, i]) => i.out).sort((a, b) => b[1].out - a[1].out);
 
+  const tested = new Set(people.map((p) => p.memberId));
+  const testedMembers = members.filter((m) => tested.has(m.id));
   const ageGroup = (birth: string | null) => {
     const age = ageFrom(birth);
     if (age == null) return "не указан";
@@ -88,25 +66,41 @@ export default async function HealthStats() {
     if (age < 60) return "45–59";
     return "60+";
   };
+  const countryOf = (p: Profile) => countryFromCode(p.geo_country) ?? countryFromTimezone(p.timezone) ?? countryFromCode(p.device_region);
 
   return (
     <>
       <div className="head">
         <div>
           <h1>Здоровье</h1>
-          <p>Сводно по всем пользователям, без имён. Считается по последнему готовому анализу каждого человека.</p>
+          <p>Все пользователи вместе. Считается по последнему готовому анализу каждого человека; любая строка открывает список этих пользователей.</p>
         </div>
       </div>
 
       <div className="grid grid--stats">
-        <Stat label="Людей с анализами" value={fmtNum(total)} hint={`в ${fmtNum(profiles.length)} аккаунтах`} />
+        <Stat label="Людей с анализами" value={fmtNum(total)} hint={`в ${fmtNum(byOwner.size)} из ${fmtNum(profiles.length)} аккаунтов`} />
         <Stat label="Есть тревожные признаки" value={fmtNum(withRedFlags)} hint={`${pct(withRedFlags, total)} людей`} />
-        <Stat label="Нужно внимание врача" value={fmtNum(needsAttention)} hint={`${pct(needsAttention, total)} людей · находки «срочно» или «внимание»`} />
+        <Stat label="Срочно или внимание" value={fmtNum(needsAttention)} hint={`${pct(needsAttention, total)} людей`} />
+        <Stat label="Есть показатели вне нормы" value={fmtNum(people.filter((p) => [...p.tested.values()].some((t) => isOutFlag(t.flag))).length)} />
       </div>
+
+      <section className="card" style={{ marginTop: 14 }}>
+        <h2>Сегменты аккаунтов</h2>
+        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+          {Object.entries(SEGMENTS).map(([key, s]) => {
+            const n = profiles.filter((p) => s.test(byOwner.get(p.id))).length;
+            return (
+              <Link key={key} className="btn" href={`/users?seg=${key}`}>
+                {s.label} · {fmtNum(n)}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="grid grid--2" style={{ marginTop: 14 }}>
         <section className="card">
-          <h2>Показатели вне нормы чаще всего</h2>
+          <h2>Показатели вне нормы</h2>
           <div className="table-wrap">
             <table>
               <thead>
@@ -118,9 +112,11 @@ export default async function HealthStats() {
                 </tr>
               </thead>
               <tbody>
-                {topMarkers.map((m) => (
-                  <tr key={m.name}>
-                    <td>{m.name}</td>
+                {topMarkers.map(([key, m]) => (
+                  <tr key={key}>
+                    <td>
+                      <Link href={`/users?marker=${key}`}>{m.name}</Link>
+                    </td>
                     <td className="num">{fmtNum(m.high)}</td>
                     <td className="num">{fmtNum(m.low)}</td>
                     <td className="num">
@@ -135,11 +131,11 @@ export default async function HealthStats() {
         </section>
         <section className="card">
           <h2>Самая серьёзная находка у человека</h2>
-          <HBars rows={SEVERITY_ORDER.map((s) => ({ label: SEVERITY_LABEL[s], value: worst.filter((w) => w === s).length }))} />
+          <HBars rows={SEVERITY_ORDER.map((s) => ({ label: SEVERITY_LABEL[s], value: people.filter((p) => p.worst === s).length }))} />
           <h2 style={{ marginTop: 18 }}>Индексы вне нормы</h2>
-          {topIndices.map((i) => (
-            <div className="row" key={i.name} style={{ justifyContent: "space-between", padding: "4px 0" }}>
-              <span>{i.name}</span>
+          {topIndices.map(([key, i]) => (
+            <div className="row" key={key} style={{ justifyContent: "space-between", padding: "4px 0" }}>
+              <Link href={`/users?index=${key}`}>{i.name}</Link>
               <span>
                 {fmtNum(i.out)} <span className="muted">· {pct(i.out, i.computed)} из {fmtNum(i.computed)}</span>
               </span>
@@ -151,16 +147,18 @@ export default async function HealthStats() {
 
       <div className="grid grid--2" style={{ marginTop: 14 }}>
         <section className="card">
-          <h2>Страны (по часовому поясу телефона)</h2>
-          <HBars rows={count(profiles, (p) => countryFromTimezone(p.timezone)?.name ?? "неизвестно").slice(0, 15)} />
+          <h2>Страны</h2>
+          <HBars rows={count(profiles, (p) => countryOf(p)?.name ?? "неизвестно").slice(0, 15)} />
           <h2 style={{ marginTop: 18 }}>Языки</h2>
           <HBars rows={count(profiles, (p) => p.locale ?? "неизвестно")} />
+          <h2 style={{ marginTop: 18 }}>Телефоны</h2>
+          <HBars rows={count(profiles, (p) => p.device_model ?? "неизвестно").slice(0, 12)} />
         </section>
         <section className="card">
           <h2>Возраст людей с анализами</h2>
-          <HBars rows={["до 18", "18–29", "30–44", "45–59", "60+", "не указан"].map((g) => ({ label: g, value: people.filter((p) => ageGroup(p.birth_date) === g).length }))} />
+          <HBars rows={["до 18", "18–29", "30–44", "45–59", "60+", "не указан"].map((g) => ({ label: g, value: testedMembers.filter((p) => ageGroup(p.birth_date) === g).length }))} />
           <h2 style={{ marginTop: 18 }}>Пол</h2>
-          <HBars rows={count(people, (p) => (p.sex === "male" ? "Мужчины" : p.sex === "female" ? "Женщины" : "не указан"))} />
+          <HBars rows={count(testedMembers, (p) => (p.sex === "male" ? "Мужчины" : p.sex === "female" ? "Женщины" : "не указан"))} />
         </section>
       </div>
     </>

@@ -1,3 +1,4 @@
+import { recordGeo } from "@/lib/geo";
 import { adminDb, json } from "@/lib/supabase";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (!EMAIL.test(email)) return json({ error: "invalid_email" }, 400);
   if (password.length < 8) return json({ error: "weak_password" }, 400);
 
-  const { error } = await adminDb().auth.admin.createUser({
+  const { data, error } = await adminDb().auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -31,5 +32,6 @@ export async function POST(req: Request) {
     const exists = /already|registered|exists/i.test(error.message);
     return json({ error: exists ? "email_taken" : "signup_failed", message: error.message }, exists ? 409 : 400);
   }
+  if (data.user) await recordGeo(req, data.user.id).catch(() => {});
   return json({ ok: true });
 }

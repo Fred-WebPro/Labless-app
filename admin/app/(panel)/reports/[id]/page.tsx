@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { logAdmin } from "@/lib/audit";
+import { requireAdmin } from "@/lib/session";
 import { adminDb } from "@/lib/supabase";
 import { STATUS_LABEL, fmtDateTime, fmtNum, fmtUsd, statusPill } from "@/lib/format";
 import { RerunButton } from "@/components/UserActions";
@@ -13,6 +15,7 @@ export default async function ReportDetail({ params }: { params: Promise<{ id: s
   const db = adminDb();
   const { data: report } = await db.from("reports").select("*, members(name, relation, sex, birth_date)").eq("id", id).maybeSingle();
   if (!report) notFound();
+  await logAdmin((await requireAdmin()).id, report.owner_id, "view_report", { report_id: id });
   const [{ data: analysis }, { data: results }, { data: owner }, { data: usage }] = await Promise.all([
     db.from("analyses").select("*").eq("report_id", id).maybeSingle(),
     db.from("results").select("*").eq("report_id", id).order("id"),

@@ -75,4 +75,6 @@ export const ADMIN_ACTION_LABEL: Record<string, string> = {
   note: "Изменена заметка",
   delete_user: "Аккаунт удалён",
   rerun_report: "Разбор перезапущен админом",
+  view_health: "Админ открыл раздел «Здоровье»",
+  view_report: "Админ открыл анализ",
 };

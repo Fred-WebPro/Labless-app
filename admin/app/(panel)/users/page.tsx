@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { adminDb } from "@/lib/supabase";
+import { countryFromTimezone } from "@/lib/country";
 import { ago, fmtDate, fmtNum, fmtUsd } from "@/lib/format";
 
 type Props = { searchParams: Promise<{ q?: string; sort?: string; filter?: string }> };
@@ -20,7 +21,7 @@ export default async function Users({ searchParams }: Props) {
   const { q = "", sort = "recent", filter = "all" } = await searchParams;
   const db = adminDb();
 
-  let query = db.from("profiles").select("id, email, full_name, locale, platform, app_version, created_at, last_seen_at, role, banned_at");
+  let query = db.from("profiles").select("id, email, full_name, locale, timezone, platform, app_version, created_at, last_seen_at, role, banned_at");
   if (q.trim()) {
     const s = q.trim().replace(/[%,()]/g, "");
     query = query.or(`email.ilike.%${s}%,full_name.ilike.%${s}%`);
@@ -82,6 +83,7 @@ export default async function Users({ searchParams }: Props) {
                 <th>Пользователь</th>
                 <th>Статус</th>
                 <th>Платформа</th>
+                <th>Страна</th>
                 <th>Язык</th>
                 <th className="num">Семья</th>
                 <th className="num">Анализы</th>
@@ -109,6 +111,7 @@ export default async function Users({ searchParams }: Props) {
                       {u.platform ?? "—"}
                       {u.app_version ? ` · ${u.app_version}` : ""}
                     </td>
+                    <td className="muted">{countryFromTimezone(u.timezone)?.name ?? "—"}</td>
                     <td className="muted">{u.locale}</td>
                     <td className="num">{fmtNum(s?.members ?? 0)}</td>
                     <td className="num">{fmtNum(s?.reports ?? 0)}</td>

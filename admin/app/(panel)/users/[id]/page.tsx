@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HealthPanel } from "@/components/HealthPanel";
 import { PushComposer } from "@/components/PushComposer";
 import { NoteEditor, RerunButton, UserActions } from "@/components/UserActions";
+import { logAdmin } from "@/lib/audit";
+import { countryFromTimezone } from "@/lib/country";
+import { requireAdmin } from "@/lib/session";
 import { adminDb, adminEmails } from "@/lib/supabase";
 import { ADMIN_ACTION_LABEL, EVENT_LABEL, RELATION_LABEL, STATUS_LABEL, ago, fmtDate, fmtDateTime, fmtNum, fmtUsd, statusPill } from "@/lib/format";
 import { ageFrom } from "@/lib/analysis/indices";
@@ -10,8 +14,11 @@ export const maxDuration = 300;
 
 type Item = { at: string; kind: "event" | "admin" | "inbox" | "report"; text: string; detail?: string };
 
-export default async function UserDetail({ params }: { params: Promise<{ id: string }> }) {
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ health?: string }> };
+
+export default async function UserDetail({ params, searchParams }: Props) {
   const { id } = await params;
+  const showHealth = (await searchParams).health === "1";
   const db = adminDb();
   const { data: profile } = await db.from("profiles").select("*").eq("id", id).maybeSingle();
   if (!profile) notFound();
@@ -52,6 +59,8 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
   const banned = !!profile.banned_at;
   const isOwner = adminEmails().includes((profile.email ?? "").toLowerCase());
   const lastPlatform = (events ?? []).find((e) => e.platform && e.platform !== "server");
+  const country = countryFromTimezone(profile.timezone);
+  if (showHealth) await logAdmin((await requireAdmin()).id, id, "view_health");
 
   const timeline: Item[] = [
     ...(events ?? [])
@@ -112,10 +121,34 @@ export default async function UserDetail({ params }: { params: Promise<{ id: str
         <Mini label="Был в приложении" value={ago(profile.last_seen_at)} hint={`всего событий ${fmtNum(eventsTotal ?? 0)}`} />
       </div>
 
+      <section className="card" id="health" style={{ marginTop: 14 }}>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <h2 style={{ margin: 0 }}>Здоровье</h2>
+          {showHealth ? (
+            <Link className="btn" href={`/users/${id}`}>
+              Скрыть
+            </Link>
+          ) : (
+            <Link className="btn btn--ink" href={`/users/${id}?health=1#health`}>
+              Показать
+            </Link>
+          )}
+        </div>
+        {showHealth ? (
+          <HealthPanel ownerId={id} members={members ?? []} />
+        ) : (
+          <p className="muted" style={{ margin: "8px 0 0" }}>
+            Находки, показатели вне нормы и их история по каждому члену семьи. Каждый просмотр записывается в журнал действий.
+          </p>
+        )}
+      </section>
+
       <div className="grid grid--2" style={{ marginTop: 14 }}>
         <section className="card">
           <h2>Профиль</h2>
           <dl className="kv">
+            <dt>Страна</dt>
+            <dd>{country ? `${country.name} (по часовому поясу ${profile.timezone})` : "—"}</dd>
             <dt>Язык</dt>
             <dd>{profile.locale}</dd>
             <dt>Устройство</dt>

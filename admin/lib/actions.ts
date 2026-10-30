@@ -3,14 +3,11 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { runAnalysis } from "@/lib/analysis/pipeline";
+import { logAdmin as log } from "@/lib/audit";
 import { requireAdmin } from "@/lib/session";
 import { adminDb, adminEmails } from "@/lib/supabase";
 
 export type ActionResult = { ok: boolean; message: string };
-
-async function log(adminId: string, target: string | null, action: string, details: Record<string, unknown> = {}) {
-  await adminDb().from("admin_actions").insert({ admin_id: adminId, target_user: target, action, details });
-}
 
 async function guardTarget(adminId: string, userId: string): Promise<string | null> {
   if (userId === adminId) return "Нельзя применить это к своему аккаунту.";

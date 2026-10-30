@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Обзор" },
   { href: "/users", label: "Пользователи" },
   { href: "/reports", label: "Анализы" },
+  { href: "/health", label: "Здоровье" },
   { href: "/activity", label: "Активность" },
   { href: "/push", label: "Рассылки" },
 ];

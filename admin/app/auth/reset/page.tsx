@@ -54,8 +54,21 @@ export default function ResetPassword() {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
     const code = new URLSearchParams(window.location.search).get("code");
+    // The app's client uses the implicit flow, so the email link lands here with the session in the hash.
+    // The browser client is PKCE-only and ignores it, so the hash is read by hand.
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
     const done = () => setChecked(true);
-    if (code) {
+    if (accessToken && refreshToken) {
+      window.history.replaceState(null, "", window.location.pathname);
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ error }) => {
+        if (!error) setReady(true);
+        done();
+      });
+    } else if (hash.get("error")) {
+      done();
+    } else if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (!error) setReady(true);
         done();

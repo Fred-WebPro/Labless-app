@@ -4,7 +4,7 @@ import { HealthPanel } from "@/components/HealthPanel";
 import { PushComposer } from "@/components/PushComposer";
 import { NoteEditor, RerunButton, UserActions } from "@/components/UserActions";
 import { logAdmin } from "@/lib/audit";
-import { countryFromTimezone } from "@/lib/country";
+import { countryFromCode, countryFromTimezone } from "@/lib/country";
 import { requireAdmin } from "@/lib/session";
 import { adminDb, adminEmails } from "@/lib/supabase";
 import { ADMIN_ACTION_LABEL, EVENT_LABEL, RELATION_LABEL, STATUS_LABEL, ago, fmtDate, fmtDateTime, fmtNum, fmtUsd, statusPill } from "@/lib/format";
@@ -60,6 +60,7 @@ export default async function UserDetail({ params, searchParams }: Props) {
   const isOwner = adminEmails().includes((profile.email ?? "").toLowerCase());
   const lastPlatform = (events ?? []).find((e) => e.platform && e.platform !== "server");
   const country = countryFromTimezone(profile.timezone);
+  const region = countryFromCode(profile.device_region);
   if (showHealth) await logAdmin((await requireAdmin()).id, id, "view_health");
 
   const timeline: Item[] = [
@@ -148,13 +149,25 @@ export default async function UserDetail({ params, searchParams }: Props) {
           <h2>Профиль</h2>
           <dl className="kv">
             <dt>Страна</dt>
-            <dd>{country ? `${country.name} (по часовому поясу ${profile.timezone})` : "—"}</dd>
-            <dt>Язык</dt>
+            <dd>{country ? `${country.name} (часовой пояс ${profile.timezone})` : "—"}</dd>
+            <dt>Регион в настройках</dt>
+            <dd>{region?.name ?? "—"}</dd>
+            <dt>Язык приложения</dt>
             <dd>{profile.locale}</dd>
-            <dt>Устройство</dt>
+            <dt>Телефон</dt>
+            <dd>{[profile.device_brand, profile.device_model].filter(Boolean).join(" ") || "—"}</dd>
+            <dt>Система</dt>
+            <dd>{profile.os_version ?? profile.platform ?? "—"}</dd>
+            <dt>Версия приложения</dt>
             <dd>
-              {profile.platform ?? "—"} {profile.device_model ? `· ${profile.device_model}` : ""} {profile.app_version ? `· v${profile.app_version}` : ""}
+              {profile.app_version ? `v${profile.app_version}` : "—"}
+              {profile.app_build ? ` (сборка ${profile.app_build})` : ""}
+              {profile.update_id ? ` · обновление ${String(profile.update_id).slice(0, 8)}` : ""}
             </dd>
+            <dt>Apple Health</dt>
+            <dd>{profile.sleep_connected_at ? `подключён ${fmtDate(profile.sleep_connected_at)}` : "не подключён"}</dd>
+            <dt>Согласие на ИИ</dt>
+            <dd>{profile.ai_consent_at ? `дано ${fmtDateTime(profile.ai_consent_at)}` : "не дано"}</dd>
             <dt>Последняя платформа</dt>
             <dd>{lastPlatform?.platform ?? "—"}</dd>
             <dt>Уведомления</dt>

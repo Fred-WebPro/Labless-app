@@ -1,6 +1,8 @@
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import { getLocales } from "expo-localization";
+import * as Updates from "expo-updates";
 import { Platform } from "react-native";
 import { supabase } from "@/lib/supabase";
 
@@ -56,6 +58,11 @@ export function ping(locale: string) {
           platform: Platform.OS,
           app_version: appVersion,
           device_model: Device.modelName ?? (Platform.OS === "web" ? "browser" : null),
+          device_brand: Device.brand ?? Device.manufacturer ?? null,
+          os_version: Device.osVersion ? `${Device.osName ?? Platform.OS} ${Device.osVersion}` : null,
+          device_region: getLocales()[0]?.regionCode ?? null,
+          app_build: Application.nativeBuildVersion ?? null,
+          update_id: Updates.updateId ?? null,
           last_seen_at: new Date().toISOString(),
           locale,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,

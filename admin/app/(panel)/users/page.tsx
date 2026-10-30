@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { adminDb } from "@/lib/supabase";
-import { countryFromTimezone } from "@/lib/country";
+import { countryFromCode, countryFromTimezone } from "@/lib/country";
 import { ago, fmtDate, fmtNum, fmtUsd } from "@/lib/format";
 
-type Props = { searchParams: Promise<{ q?: string; sort?: string; filter?: string }> };
+type Props = { searchParams: Promise<{ q?: string; sort?: string; filter?: string; country?: string }> };
 
 type Stats = { user_id: string; members: number; reports: number; sessions_30d: number; events_30d: number; ai_cost: number; active_days: number };
 
@@ -18,10 +18,10 @@ const FILTERS: Record<string, string> = {
 };
 
 export default async function Users({ searchParams }: Props) {
-  const { q = "", sort = "recent", filter = "all" } = await searchParams;
+  const { q = "", sort = "recent", filter = "all", country = "" } = await searchParams;
   const db = adminDb();
 
-  let query = db.from("profiles").select("id, email, full_name, locale, timezone, platform, app_version, created_at, last_seen_at, role, banned_at");
+  let query = db.from("profiles").select("*");
   if (q.trim()) {
     const s = q.trim().replace(/[%,()]/g, "");
     query = query.or(`email.ilike.%${s}%,full_name.ilike.%${s}%`);
@@ -41,7 +41,11 @@ export default async function Users({ searchParams }: Props) {
   const byId = new Map(((stats ?? []) as Stats[]).map((s) => [s.user_id, s]));
   const pushIds = new Set((tokens ?? []).map((t) => t.user_id));
 
+  const countryOf = (u: { timezone: string | null; device_region: string | null }) => countryFromTimezone(u.timezone) ?? countryFromCode(u.device_region);
+  const countries = [...new Map((rows ?? []).map((u) => countryOf(u)).filter((c) => !!c).map((c) => [c!.code, c!.name])).entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
+
   let users = rows ?? [];
+  if (country) users = users.filter((u) => countryOf(u)?.code === country);
   if (filter === "with_reports") users = users.filter((u) => (byId.get(u.id)?.reports ?? 0) > 0);
   if (filter === "no_reports") users = users.filter((u) => (byId.get(u.id)?.reports ?? 0) === 0);
   if (sort === "cost") users = [...users].sort((a, b) => Number(byId.get(b.id)?.ai_cost ?? 0) - Number(byId.get(a.id)?.ai_cost ?? 0));
@@ -67,6 +71,14 @@ export default async function Users({ searchParams }: Props) {
             </option>
           ))}
         </select>
+        <select className="input" name="country" defaultValue={country}>
+          <option value="">Все страны</option>
+          {countries.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
         <select className="input" name="sort" defaultValue={sort}>
           <option value="recent">Сначала новые</option>
           <option value="active">Недавно активные</option>
@@ -82,7 +94,7 @@ export default async function Users({ searchParams }: Props) {
               <tr>
                 <th>Пользователь</th>
                 <th>Статус</th>
-                <th>Платформа</th>
+                <th>Телефон</th>
                 <th>Страна</th>
                 <th>Язык</th>
                 <th className="num">Семья</th>
@@ -108,10 +120,13 @@ export default async function Users({ searchParams }: Props) {
                     </td>
                     <td>{u.banned_at ? <span className="pill pill--bad">заблокирован</span> : <span className="pill pill--good">активен</span>}</td>
                     <td className="muted">
-                      {u.platform ?? "—"}
-                      {u.app_version ? ` · ${u.app_version}` : ""}
+                      {u.device_model ?? u.platform ?? "—"}
+                      <div style={{ fontSize: 12 }}>
+                        {u.os_version ?? u.platform ?? ""}
+                        {u.app_version ? ` · v${u.app_version}` : ""}
+                      </div>
                     </td>
-                    <td className="muted">{countryFromTimezone(u.timezone)?.name ?? "—"}</td>
+                    <td className="muted">{countryOf(u)?.name ?? "—"}</td>
                     <td className="muted">{u.locale}</td>
                     <td className="num">{fmtNum(s?.members ?? 0)}</td>
                     <td className="num">{fmtNum(s?.reports ?? 0)}</td>
